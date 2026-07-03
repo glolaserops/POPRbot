@@ -1,0 +1,2374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR / PO Generator</title>
+<style>
+:root {
+  --bg: #f1f5f9; --surface: #ffffff; --border: #e2e8f0;
+  --primary: #0f172a; --accent: #6366f1; --accent-bg: #eef2ff;
+  --success: #059669; --danger: #dc2626; --muted: #94a3b8; --text: #334155;
+  --r: 8px; --shadow: 0 1px 3px rgba(0,0,0,.08); --shadow-md: 0 4px 12px rgba(0,0,0,.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+nav { background: var(--primary); display: flex; align-items: center; padding: 0 20px; position: sticky; top: 0; z-index: 100; gap: 2px; }
+.nav-brand { color: #fff; font-weight: 800; font-size: 16px; letter-spacing: .5px; padding: 15px 0; margin-right: 20px; line-height: 1.2; }
+.nav-brand span { color: #a5b4fc; font-weight: 400; font-size: 10px; letter-spacing: .3px; display: block; }
+.nav-tab { color: rgba(255,255,255,.55); padding: 16px 14px; cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; user-select: none; }
+.nav-tab:hover { color: rgba(255,255,255,.85); }
+.nav-tab.active { color: #fff; border-bottom-color: var(--accent); }
+
+.page { display: none; max-width: 940px; margin: 0 auto; padding: 28px 20px 60px; }
+.page.show { display: block; }
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+.page-header h1 { font-size: 22px; color: var(--primary); font-weight: 700; }
+.page-header p { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+.upload-zone { border: 2px dashed var(--border); border-radius: var(--r); padding: 30px 20px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; background: var(--surface); }
+.upload-zone:hover, .upload-zone.over { border-color: var(--accent); background: var(--accent-bg); }
+.upload-zone svg { color: var(--muted); margin-bottom: 10px; }
+.upload-zone .uz-label { font-weight: 600; color: var(--primary); font-size: 15px; margin-bottom: 4px; }
+.upload-zone .uz-sub { color: var(--muted); font-size: 12px; }
+.divider { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; margin: 18px 0; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.doc-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.doc-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 24px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.doc-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+.doc-card h2 { font-size: 17px; color: var(--primary); margin: 8px 0 4px; }
+.doc-card p { color: var(--muted); font-size: 12.5px; }
+
+.badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .5px; }
+.badge-pr { background: #dbeafe; color: #1d4ed8; }
+.badge-po { background: #d1fae5; color: #065f46; }
+.badge-lg { font-size: 13px; padding: 4px 14px; }
+
+.alert { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: var(--r); font-size: 13px; margin-bottom: 14px; }
+.alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+.alert-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+.alert-ok { background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 20px 22px; margin-bottom: 14px; }
+.card-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 16px; }
+
+.fg { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.fg3 { grid-template-columns: 1fr 1fr 1fr; }
+.fg4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.span2 { grid-column: span 2; }
+.span3 { grid-column: span 3; }
+.span4 { grid-column: span 4; }
+.f { display: flex; flex-direction: column; gap: 4px; }
+label { font-size: 12px; font-weight: 600; color: var(--primary); }
+label .opt { font-weight: 400; color: var(--muted); margin-left: 3px; }
+input, select, textarea {
+  border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px;
+  font-size: 13px; color: var(--text); background: var(--surface); width: 100%;
+  font-family: inherit; transition: border-color .15s, box-shadow .15s;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+input[readonly] { background: var(--bg); color: var(--muted); cursor: default; }
+textarea { resize: vertical; min-height: 68px; }
+
+.items-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; background: var(--bg); }
+th.r, td.r { text-align: right; }
+th.c, td.c { text-align: center; }
+td { padding: 3px 3px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+td input { border: none; background: transparent; padding: 5px 5px; border-radius: 4px; width: 100%; font-size: 13px; font-family: inherit; color: var(--text); }
+td input:focus { background: var(--accent-bg); outline: none; }
+.td-num { width: 28px; color: var(--muted); font-size: 12px; text-align: center; padding: 0 4px; }
+.td-del { width: 32px; text-align: center; }
+.td-total { text-align: right; font-weight: 500; font-size: 13px; padding-right: 6px; white-space: nowrap; }
+
+.totals-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; }
+.totals-row.grand { font-weight: 700; font-size: 15px; border-top: 2px solid var(--primary); margin-top: 6px; padding-top: 7px; color: var(--primary); }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity .15s, background .15s; font-family: inherit; white-space: nowrap; }
+.btn:active { opacity: .85; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #4f46e5; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #047857; }
+.btn-outline { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-ghost { background: transparent; border: none; color: var(--muted); padding: 4px 6px; }
+.btn-ghost:hover { color: var(--danger); background: #fef2f2; border-radius: 4px; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.form-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; align-items: center; justify-content: center; }
+.overlay.open { display: flex; }
+.modal { background: var(--surface); border-radius: 10px; padding: 26px; width: 540px; max-width: 96vw; box-shadow: 0 20px 60px rgba(0,0,0,.22); max-height: 90vh; overflow-y: auto; }
+.modal-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-hd h3 { font-size: 16px; color: var(--primary); }
+.modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--muted); line-height: 1; padding: 2px 6px; border-radius: 4px; }
+.modal-close:hover { background: var(--bg); color: var(--text); }
+
+.sup-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 13px 16px; display: flex; align-items: center; gap: 14px; }
+.sup-card:hover { border-color: #cbd5e1; }
+.sup-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--accent-bg); color: var(--accent); font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sup-info { flex: 1; min-width: 0; }
+.sup-name { font-weight: 600; color: var(--primary); font-size: 13.5px; }
+.sup-meta { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sup-list { display: grid; gap: 7px; }
+
+.empty { text-align: center; padding: 56px 24px; color: var(--muted); }
+.empty svg { margin-bottom: 12px; opacity: .5; }
+.empty p { margin-bottom: 16px; }
+.config-actions { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+.sup-count { font-size: 12px; color: var(--muted); }
+
+/* ── Company Selector ── */
+.co-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.92); z-index: 400; align-items: center; justify-content: center; flex-direction: column; gap: 28px; }
+.co-overlay.open { display: flex; }
+.co-logo { color: #fff; font-size: 24px; font-weight: 800; letter-spacing: 1px; text-align: center; }
+.co-logo span { color: #a5b4fc; font-weight: 400; font-size: 13px; display: block; margin-top: 4px; }
+.co-cards { display: flex; gap: 20px; }
+.co-card { background: #fff; border-radius: 14px; padding: 20px; cursor: pointer; text-align: center; width: 220px; height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 3px solid transparent; transition: border-color .15s, box-shadow .15s; }
+.co-card:hover { border-color: var(--accent); box-shadow: 0 0 0 6px rgba(99,102,241,.25); }
+.co-card .co-name { font-size: 17px; font-weight: 800; color: var(--primary); margin-bottom: 4px; }
+.co-card .co-sub { font-size: 12px; color: var(--muted); }
+.co-card .co-icon { font-size: 38px; margin-bottom: 14px; }
+
+
+/* ── Narrow company indicator in nav ── */
+.nav-co { color: #a5b4fc; font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,.07); cursor: pointer; margin-left: auto; white-space: nowrap; }
+.nav-co:hover { background: rgba(255,255,255,.14); }
+
+/* ── Config sub-tabs ── */
+.cfg-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+.cfg-tab { padding: 9px 18px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color .15s, border-color .15s; }
+.cfg-tab:hover { color: var(--text); }
+.cfg-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── Signature strip (PR + PO paper) ── */
+.dp-sigoff { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--dp-border); padding: 16px 22px 14px; background: #fff; }
+.dp-sigoff.has-am { grid-template-columns: 1fr 1fr 1fr; }
+.dp-sigcol { padding: 0 10px 0 0; }
+.dp-sigcol:not(:first-child) { border-left: 1px solid var(--dp-border); padding: 0 10px 0 18px; }
+.dp-sigcol .dp-sf-lbl { font-size: 9px; font-weight: 700; color: var(--dp-label); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 5px; }
+/* ── Authority matrix col (inside sig strip, PR only) ── */
+.dp-am-lbl { font-size: 9px; font-weight: 700; color: var(--dp-label); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 8px; }
+.dp-am-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.dp-am-table th { font-size: 9px; font-weight: 700; color: var(--dp-label); text-transform: uppercase; letter-spacing: .5px; padding: 3px 6px; border-bottom: 1px solid var(--dp-border); text-align: left; }
+.dp-am-table td { padding: 3px 6px; color: #222; }
+.dp-am-table tr.am-active td { background: #f0f0f0; color: #000; font-weight: 700; }
+/* ── Authority matrix config table ── */
+.am-cfg-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+.am-cfg-table th { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding: 6px 10px; border-bottom: 2px solid var(--border); text-align: left; background: var(--bg); }
+.am-cfg-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.am-cfg-table tr:last-child td { border-bottom: none; }
+
+/* ── Dept chips ── */
+.dept-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.dept-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-bg); color: var(--accent); border: 1px solid #c7d2fe; border-radius: 20px; padding: 4px 12px; font-size: 12.5px; font-weight: 500; }
+.dept-chip button { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 13px; line-height: 1; padding: 0 2px; opacity: .6; }
+.dept-chip button:hover { opacity: 1; }
+
+/* ── Document Preview (paper layout) ── */
+.doc-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 12px; }
+.doc-paper {
+  --dp-border: #ddd; --dp-border-soft: #eee; --dp-label: #888; --dp-text: #333; --dp-mid: #666; --dp-faint: #999;
+  /* 794px = A4 width (210mm) at 96dpi, so the on-screen sheet matches the printed A4 PDF proportionally. */
+  background: #fff; width: 794px; max-width: 100%; margin: 0 auto 60px; box-shadow: 0 2px 28px rgba(0,0,0,.13);
+  border-radius: 0; overflow: hidden; font-family: Arial, Helvetica, sans-serif; color: #111;
+}
+
+/* Paper header — black/white for print */
+.dp-hd { background: #fff; color: #000; border-bottom: 2px solid #000; padding: 14px 22px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.dp-hd-left { flex: 1; min-width: 0; }
+.dp-co-name { font-size: 14px; font-weight: 800; letter-spacing: .3px; color: #000; }
+.dp-co-meta { font-size: 9px; color: var(--dp-mid); margin-top: 3px; line-height: 1.6; }
+.dp-hd-right { text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; }
+.dp-doctype { font-size: 14px; font-weight: 800; letter-spacing: .3px; margin-bottom: 3px; color: #111; }
+.dp-ghost { background: transparent; border: none; border-bottom: 1px dashed #999; color: var(--dp-mid); font-size: 11.5px; text-align: right; width: 170px; padding: 2px 4px; font-family: inherit; display: block; margin-top: 2px; }
+.dp-ghost:focus { outline: none; border-bottom-color: #333; background: #f5f5f5; color: #111; }
+.dp-ghost::placeholder { color: #bbb; }
+.dp-ghost-sm { font-size: 11.5px; }
+
+/* PR Ref row */
+.dp-prref { background: #f8f8f8; color: #444; border-bottom: 1px solid #ddd; padding: 5px 22px; font-size: 11px; display: flex; align-items: center; gap: 8px; }
+.dp-prref input { background: transparent; border: none; border-bottom: 1px dashed #bbb; color: #000; font-size: 11px; width: 160px; padding: 1px 4px; font-family: inherit; }
+.dp-prref input:focus { outline: none; border-bottom-color: #333; }
+
+/* Info strip */
+.dp-strip { background: #fff; border: 1px solid var(--dp-border); margin: 12px 22px 0; display: flex; flex-wrap: wrap; }
+.dp-sf { flex: 1; min-width: 100px; padding: 8px 16px; border-right: 1px solid var(--dp-border); }
+.dp-sf:last-child { border-right: none; }
+.dp-sf-lbl { font-size: 9px; font-weight: 700; color: var(--dp-label); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 4px; }
+.dp-sf input, .dp-sf select { background: transparent; border: none; border-bottom: 1px dashed transparent; font-size: 12.5px; color: var(--dp-text); width: 100%; padding: 2px 0; font-family: inherit; }
+.dp-sf input:hover, .dp-sf select:hover { border-bottom-color: var(--dp-border); }
+.dp-sf input:focus, .dp-sf select:focus { outline: none; border-bottom-color: var(--accent); background: #eef2ff; padding: 2px 4px; border-radius: 3px; }
+
+/* Delivery Required By — emphasized strip (PO only) */
+.dp-deliv-box { display: none; margin: 12px 22px 0; border: 1.5px solid #111; border-radius: 0; padding: 8px 14px; background: #fafafa; }
+.dp-deliv-box .dp-sf { padding: 0; border-right: none; flex: none; min-width: 0; }
+.dp-deliv-box .dp-sf-lbl { margin-bottom: 3px; }
+.dp-deliv-box input[type="date"] { background: transparent; border: none; border-bottom: 1px dashed transparent; font-size: 15px; font-weight: 700; color: #111; width: 100%; padding: 2px 0; font-family: inherit; }
+.dp-deliv-box input[type="date"]:hover { border-bottom-color: var(--dp-border); }
+.dp-deliv-box input[type="date"]:focus { outline: none; border-bottom-color: var(--accent); background: #eef2ff; padding: 2px 4px; border-radius: 3px; }
+
+/* Vendor + Ship-to boxes */
+.dp-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 16px 22px; gap: 16px; }
+.dp-boxes.single { grid-template-columns: 1fr; }
+.dp-box { border: 1px solid var(--dp-border); border-radius: 0; padding: 8px 10px; }
+.dp-box-lbl { font-size: 9px; font-weight: 700; color: var(--dp-label); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+.dp-box-select { border: none; border-bottom: 1px dashed var(--dp-border); background: transparent; font-size: 13px; font-weight: 700; color: #111; width: 100%; padding: 2px 0; font-family: inherit; margin-bottom: 6px; }
+.dp-box-select:focus { outline: none; border-bottom-color: var(--accent); }
+.dp-box-input { border: none; border-bottom: 1px dashed transparent; background: transparent; font-size: 11.5px; color: var(--dp-text); width: 100%; padding: 2px 0; font-family: inherit; }
+.dp-box-input:hover { border-bottom-color: var(--dp-border); }
+.dp-box-input:focus { outline: none; border-bottom-color: var(--accent); background: #f8fafc; padding: 2px 4px; border-radius: 2px; }
+.dp-box-row { display: flex; gap: 8px; margin-top: 4px; }
+.dp-box-row .dp-box-input { flex: 1; }
+.dp-shipto { background: #f8f8f8; }
+
+/* Vendor searchable combobox */
+.dp-combo { position: relative; }
+.dp-combo-list { display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 60; background: #fff; border: 1px solid var(--border); border-radius: 6px; box-shadow: var(--shadow-md); max-height: 230px; overflow-y: auto; margin-top: 3px; }
+.dp-combo-list.open { display: block; }
+.dp-combo-item { padding: 7px 10px; font-size: 12.5px; color: var(--text); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dp-combo-item:hover, .dp-combo-item.active { background: var(--accent-bg); color: var(--accent); }
+.dp-combo-empty { padding: 8px 10px; font-size: 12px; color: var(--muted); }
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  nav, .doc-toolbar, .page-header, .co-overlay { display: none !important; }
+  .page { display: block !important; padding: 0; }
+  .doc-paper { box-shadow: none; margin: 0; width: auto; }
+  .dp-table, .dp-sigoff, .dp-notes, .dp-foot { page-break-inside: avoid; }
+}
+
+/* Items table inside paper */
+.dp-items { padding: 0 22px 12px; }
+.dp-table { width: 100%; border-collapse: collapse; }
+.dp-table th { color: #111; font-size: 10.5px; font-weight: 700; padding: 6px 6px; text-align: left; white-space: nowrap; border-top: 1px solid #111; border-bottom: 1px solid #111; }
+.dp-table th.r { text-align: right; }
+.dp-table th.c { text-align: center; }
+.dp-table td { padding: 4px 3px; border-bottom: 1px solid var(--dp-border-soft); vertical-align: middle; font-size: 10.5px; }
+.dp-table td input { border: none; background: transparent; padding: 5px 4px; border-radius: 3px; width: 100%; font-size: 12.5px; font-family: inherit; color: var(--dp-text); }
+.dp-table td input:focus { background: #f5f5f5; outline: 1px solid #999; }
+.dp-table tr:hover td { background: #fafafa; }
+.dp-table tr:hover td input { background: transparent; }
+
+/* Totals section */
+.dp-totals { padding: 8px 22px 16px; display: flex; justify-content: flex-end; }
+.dp-totals-inner { width: 290px; }
+.dp-tot-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; font-size: 13px; color: var(--dp-text); }
+.dp-tot-row span:last-child { white-space: nowrap; }
+.dp-tot-row.grand { font-weight: 700; font-size: 15px; border-top: 1.5px solid #111; margin-top: 6px; padding-top: 7px; color: #111; }
+
+/* Notes section */
+.dp-notes { padding: 4px 22px 22px; display: grid; grid-template-columns: 1fr; gap: 12px; }
+.dp-notes-lbl { font-size: 9px; font-weight: 700; color: var(--dp-label); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 5px; }
+.dp-notes textarea { border: 1px solid var(--dp-border); border-radius: 0; background: transparent; font-size: 12.5px; color: var(--dp-text); width: 100%; min-height: 48px; padding: 7px 9px; font-family: inherit; resize: vertical; }
+.dp-notes textarea:focus { outline: none; border-color: var(--accent); background: #fafafe; }
+
+/* Signature blank line (mirrors the printed signing line above the name) */
+.dp-sig-line { border-bottom: 1px solid #999; height: 20px; margin-top: 10px; }
+
+/* Footer: doc reference line, mirrors the printed PDF footer */
+.dp-foot { padding: 14px 22px 20px; text-align: center; }
+.dp-foot-ref { font-size: 8.5px; color: var(--dp-faint); border-top: 1px solid #ccc; padding-top: 6px; }
+#toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #fff; z-index: 500; box-shadow: 0 4px 16px rgba(0,0,0,.18); transition: opacity .2s; }
+</style>
+</head>
+<body>
+
+<!-- ════════ COMPANY SELECTOR ════════ -->
+<div class="co-overlay open" id="coOverlay">
+  <div class="co-logo">PR / PO Generator<span id="coLogoSub">Loading shared data…</span></div>
+  <div class="co-cards" id="coCards" style="opacity:.4;pointer-events:none">
+    <div class="co-card" onclick="selectCompany('glow')">
+      <div class="co-icon">✦</div>
+      <div class="co-name" id="coCardName-glow">GLOW</div>
+      <div class="co-sub" id="coCardSub-glow">Glow International Malaysia Sdn. Bhd.</div>
+    </div>
+    <div class="co-card" onclick="selectCompany('brightcare')">
+      <div class="co-icon">✦</div>
+      <div class="co-name" id="coCardName-brightcare">BRIGHTCARE</div>
+      <div class="co-sub" id="coCardSub-brightcare">Brightcare Sdn. Bhd.</div>
+    </div>
+  </div>
+</div>
+
+<nav>
+  <div class="nav-brand" id="navBrand">—<span id="navSub"></span></div>
+  <div class="nav-tab active" id="tab-home" onclick="goTo('home')">Home</div>
+  <div class="nav-tab" id="tab-form" onclick="goTo('form')">Document</div>
+  <div class="nav-tab" id="tab-config" onclick="goTo('config')">Configuration</div>
+  <div class="nav-co" onclick="changeMyName()" title="Change your name" style="margin-left:auto">👤 <span id="navMyName">Set your name</span></div>
+  <div class="nav-co" onclick="showCoSelector()" title="Switch company">⇄ Switch Company</div>
+</nav>
+
+<!-- ════════ HOME ════════ -->
+<div class="page show" id="page-home">
+  <div class="page-header">
+    <div>
+      <h1>PR / PO Generator</h1>
+      <p id="homeSubtitle"></p>
+    </div>
+  </div>
+
+  <div class="upload-zone" id="dropzone" onclick="$('fileIn').click()">
+    <svg width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+      <path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0121 9.414V19a2 2 0 01-2 2z"/>
+    </svg>
+    <div class="uz-label">Upload a supplier invoice to auto-fill</div>
+    <div class="uz-sub">Drag &amp; drop or click · PDF supported for text extraction · Images accepted as reference</div>
+  </div>
+  <input type="file" id="fileIn" accept=".pdf,.png,.jpg,.jpeg" style="display:none">
+  <div id="uploadAlert"></div>
+
+  <div id="draftsSection" style="display:none">
+    <div class="divider">drafts in progress</div>
+    <div id="draftsList" class="sup-list"></div>
+  </div>
+
+  <div class="divider">or start from scratch</div>
+
+  <div class="doc-cards">
+    <div class="doc-card" onclick="openDoc({_section:'PR'})">
+      <span class="badge badge-pr badge-lg">PR</span>
+      <h2>Purchase Requisition</h2>
+      <p>Every PR/PO document has both a PR and a PO page. Start here to land on the PR view first.</p>
+    </div>
+    <div class="doc-card" onclick="openDoc({_section:'PO'})">
+      <span class="badge badge-po badge-lg">PO</span>
+      <h2>Purchase Order</h2>
+      <p>Every PR/PO document has both a PR and a PO page. Start here to land on the PO view first.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ FORM ════════ -->
+<div class="page" id="page-form">
+  <div class="doc-toolbar">
+    <button class="btn btn-outline" onclick="goTo('home')">← Back</button>
+    <div class="cfg-tabs" style="border-bottom:none;margin-bottom:0;gap:4px">
+      <div class="cfg-tab active" id="sectiontab-PR" onclick="switchSection('PR')">PR View</div>
+      <div class="cfg-tab" id="sectiontab-PO" onclick="switchSection('PO')">PO View</div>
+    </div>
+    <div id="parsedBanner" style="flex:1"></div>
+    <button class="btn btn-outline" onclick="saveDraftFn()">💾 Save Draft</button>
+    <button class="btn btn-success" onclick="downloadPDF()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+      Download PDF (PR + PO)
+    </button>
+  </div>
+
+  <div class="doc-paper">
+    <!-- ── Header ── -->
+    <div class="dp-hd">
+      <div class="dp-hd-left" style="display:flex;align-items:center;gap:10px">
+        <img id="dpCoLogo" style="display:none;max-height:34px;max-width:110px;object-fit:contain;flex-shrink:0">
+        <div>
+          <div class="dp-co-name" id="dpCoName"></div>
+          <div class="dp-co-meta" id="dpCoMeta"></div>
+        </div>
+      </div>
+      <div class="dp-hd-right">
+        <div class="dp-doctype" id="fTitle">PURCHASE REQUISITION</div>
+        <input id="fNoPR" class="dp-ghost dp-ghost-sm" placeholder="PR No. (enter manually)" oninput="updatePrRefDisplay();updateFootRef()">
+        <input id="fNoPO" class="dp-ghost dp-ghost-sm" placeholder="PO No. (enter manually)" style="display:none" oninput="updateFootRef()">
+        <input id="fDate" type="date" class="dp-ghost dp-ghost-sm">
+        <div id="fDocBadge" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- PR Ref row (PO view only) — auto-populated from the PR number reserved for this same document, not manually typed. -->
+    <div class="dp-prref" id="prRefRow" style="display:none">
+      <span>PR Ref:</span>
+      <input id="fPrRef" placeholder="PR Reference No." readonly>
+    </div>
+
+    <!-- ── Info Strip ── -->
+    <div class="dp-strip">
+      <!-- PR view shows: dept, delivDate (both views share these fields — one data model, two layouts) -->
+      <!-- PO view shows: dept, payTerms, invRef (delivDate moves to the emphasized box below) -->
+      <div class="dp-sf">
+        <div class="dp-sf-lbl" id="deptStripLbl">Requested Department</div>
+        <select id="fDept"></select>
+      </div>
+      <div class="dp-sf" id="dpSfPayTerms" style="display:none">
+        <div class="dp-sf-lbl">Payment Terms</div>
+        <input id="fPayTerms" placeholder="e.g. 30 days">
+      </div>
+      <div class="dp-sf" id="dpSfDelivSlot">
+        <div class="dp-sf-lbl">Date Required</div>
+        <input id="fDelivDate" type="date">
+      </div>
+      <div class="dp-sf" id="dpSfInvRef">
+        <div class="dp-sf-lbl">Vendor Inv. Ref</div>
+        <input id="fInvRef" placeholder="e.g. INV-2026-001">
+      </div>
+    </div>
+
+    <!-- Delivery Required By — emphasized (PO only); fDelivDate's field wrapper is moved
+         in here by JS when editing a PO, and back into dpSfDelivSlot for a PR. -->
+    <div class="dp-deliv-box" id="dpDelivBox"></div>
+
+    <!-- ── Vendor + Ship To ── -->
+    <div class="dp-boxes" id="dpBoxes">
+      <div class="dp-box">
+        <div class="dp-box-lbl">Vendor / Supplier</div>
+        <div class="dp-combo" id="fSupCombo">
+          <input type="text" id="fSupSearch" class="dp-box-select" placeholder="Type to search vendor..." autocomplete="off"
+            oninput="onSupSearchInput()" onfocus="onSupSearchFocus()" onkeydown="onSupSearchKeydown(event)">
+          <input type="hidden" id="fSup" value="">
+          <div class="dp-combo-list" id="fSupList"></div>
+        </div>
+        <input id="fSupAddr" placeholder="Address" class="dp-box-input" style="margin-bottom:4px">
+        <div class="dp-box-row">
+          <input id="fSupContact" placeholder="Contact" class="dp-box-input">
+          <input id="fSupPhone" placeholder="Phone" class="dp-box-input">
+          <input id="fSupEmail" placeholder="Email" type="email" class="dp-box-input">
+        </div>
+      </div>
+      <div class="dp-box dp-shipto" id="shipToCard" style="display:none">
+        <div class="dp-box-lbl">Ship To / Deliver To</div>
+        <select id="fShipOutlet" onchange="onShipOutletChange()" class="dp-box-select"><option value="">Select outlet...</option></select>
+        <textarea id="fShipAddr" placeholder="Delivery address" class="dp-box-input" style="min-height:36px;resize:none;border:none;border-bottom:1px dashed transparent;width:100%;font-size:11.5px;font-family:inherit;background:transparent;margin-bottom:4px"></textarea>
+        <div class="dp-box-row">
+          <input id="fShipAttn" placeholder="Attention" class="dp-box-input">
+          <input id="fShipPhone" placeholder="Phone" class="dp-box-input">
+          <input id="fShipEmail" placeholder="Email" type="email" class="dp-box-input">
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Items Table ── -->
+    <div class="dp-items">
+      <table class="dp-table">
+        <thead>
+          <tr>
+            <th style="width:28px">#</th>
+            <th>Description</th>
+            <th style="width:52px" class="c">Qty</th>
+            <th style="width:58px" class="c">Unit</th>
+            <th style="width:108px" class="r">Unit price</th>
+            <th style="width:96px" class="r">Total</th>
+            <th style="width:28px"></th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+      <button class="btn btn-outline btn-sm" onclick="addRow()" style="margin:8px 0 0 2px">+ Add Item</button>
+    </div>
+
+    <!-- ── Totals ── -->
+    <div class="dp-totals">
+      <div class="dp-totals-inner">
+        <div class="dp-tot-row"><span>Subtotal</span><span id="tSub">RM 0.00</span></div>
+        <div class="dp-tot-row">
+          <select id="taxSel" onchange="recalc()" style="border:none;background:transparent;font-size:13px;color:var(--text);cursor:pointer;padding:0">
+            <option value="0">No Tax</option>
+            <option value="6">SST 6%</option>
+            <option value="8">SST 8%</option>
+            <option value="10">GST 10%</option>
+          </select>
+          <span id="tTax">RM 0.00</span>
+        </div>
+        <div class="dp-tot-row grand"><span>GRAND TOTAL</span><span id="tTotal">RM 0.00</span></div>
+      </div>
+    </div>
+
+    <!-- ── Notes (comes before signatures, matching the printed PDF order) ── -->
+    <div class="dp-notes">
+      <div>
+        <div class="dp-notes-lbl" id="justLabel">Purpose / Justification</div>
+        <textarea id="fJustify" placeholder="Reason for this purchase..."></textarea>
+      </div>
+      <div>
+        <div class="dp-notes-lbl">Remarks</div>
+        <textarea id="fRemarks" placeholder="Special instructions, delivery notes..."></textarea>
+      </div>
+    </div>
+
+    <!-- ── Prepared / Approved / Authorised By + Authority Matrix (PR) ── -->
+    <div class="dp-sigoff" id="dpSigOff">
+      <div class="dp-sigcol">
+        <div class="dp-sf-lbl">Prepared By</div>
+        <div class="dp-sig-line"></div>
+        <select id="fPrepBy" onchange="onStaffSelect('prep')" class="dp-box-select"><option value="">Select staff...</option></select>
+        <input id="fPrepPos" placeholder="Position" class="dp-box-input" style="margin-top:4px">
+      </div>
+      <div class="dp-sigcol">
+        <div class="dp-sf-lbl" id="fAuthLbl">Approved By</div>
+        <div class="dp-sig-line"></div>
+        <select id="fAuthBy" onchange="onStaffSelect('auth')" class="dp-box-select"><option value="">Select staff...</option></select>
+        <input id="fAuthPos" placeholder="Position" class="dp-box-input" style="margin-top:4px">
+      </div>
+      <div class="dp-sigcol" id="dpAmRef" style="display:none">
+        <div class="dp-am-lbl">Authority Matrix</div>
+        <table class="dp-am-table" id="dpAmTable"></table>
+      </div>
+    </div>
+
+    <!-- ── Footer (mirrors the printed PDF doc reference line) ── -->
+    <div class="dp-foot">
+      <div class="dp-foot-ref" id="dpFootRef"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ CONFIG ════════ -->
+<div class="page" id="page-config">
+  <div class="page-header">
+    <div>
+      <h1>Configuration</h1>
+      <p>Manage vendors, outlets and departments · Synced with your team</p>
+    </div>
+    <div id="cfgHeaderAction"></div>
+  </div>
+  <div class="cfg-tabs">
+    <div class="cfg-tab" id="ctab-company" onclick="cfgTab('company')">Company</div>
+    <div class="cfg-tab active" id="ctab-vendors" onclick="cfgTab('vendors')">Vendors</div>
+    <div class="cfg-tab" id="ctab-outlets" onclick="cfgTab('outlets')">Outlets</div>
+    <div class="cfg-tab" id="ctab-depts" onclick="cfgTab('depts')">Departments</div>
+    <div class="cfg-tab" id="ctab-staff" onclick="cfgTab('staff')">Staff</div>
+  </div>
+
+  <!-- Company sub-tab -->
+  <div id="cpanel-company" style="display:none">
+    <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px">These details appear on generated PR/PO documents, headers, and the company selector. Synced with your team.</p>
+    <div class="config-actions" style="margin-bottom:16px">
+      <select id="companyEditSel" onchange="renderCompanyForm()">
+        <option value="glow">GLOW</option>
+        <option value="brightcare">BRIGHTCARE</option>
+      </select>
+    </div>
+    <div class="f span2" style="max-width:640px;margin-bottom:16px">
+      <label>Company Logo <span class="opt">(optional — shown on the document header and PDF)</span></label>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:4px">
+        <div id="coLogoPreviewWrap" style="display:none;width:64px;height:64px;border:1px solid var(--border);border-radius:6px;align-items:center;justify-content:center;background:#fff;flex-shrink:0">
+          <img id="coLogoPreview" style="max-width:56px;max-height:56px;object-fit:contain">
+        </div>
+        <div>
+          <input type="file" id="coLogoFile" accept="image/*" onchange="onLogoFileChange(this.files[0])" style="display:none">
+          <div class="btn-group">
+            <button type="button" class="btn btn-outline btn-sm" onclick="$('coLogoFile').click()">Upload logo</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="coLogoRemoveBtn" style="display:none" onclick="removeCompanyLogo()">Remove</button>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">PNG or JPG, resized automatically. Keep it simple — this is stored in the shared config, so smaller logos sync faster.</div>
+        </div>
+      </div>
+    </div>
+    <div class="fg" style="gap:12px;max-width:640px">
+      <div class="f span2"><label>Legal Name *</label><input id="coFName" placeholder="e.g. GLOW INTERNATIONAL MALAYSIA SDN. BHD."></div>
+      <div class="f"><label>Short Label *</label><input id="coFShort" placeholder="e.g. GLOW"></div>
+      <div class="f"><label>Subtitle</label><input id="coFSub" placeholder="e.g. International Malaysia Sdn. Bhd."></div>
+      <div class="f span2"><label>Company Registration No.</label><input id="coFNo" placeholder="e.g. Co. No. 1089377-V"></div>
+      <div class="f span2"><label>Address Line 1</label><input id="coFAddr1"></div>
+      <div class="f span2"><label>Address Line 2</label><input id="coFAddr2"></div>
+      <div class="f"><label>Email</label><input id="coFEmail" type="email"></div>
+      <div class="f"><label>Website</label><input id="coFWeb"></div>
+    </div>
+    <div class="btn-group" style="margin-top:20px">
+      <button class="btn btn-primary btn-sm" onclick="saveCompanyDetails()">Save Company Details</button>
+    </div>
+  </div>
+
+  <!-- Vendors sub-tab -->
+  <div id="cpanel-vendors">
+    <div class="config-actions">
+      <input type="text" id="supSearch" placeholder="Search vendors..." style="width:260px" oninput="renderSupList()">
+      <span class="sup-count" id="supCount"></span>
+      <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openSupModal()">+ Add Vendor</button>
+    </div>
+    <div id="supList"></div>
+  </div>
+
+  <!-- Outlets sub-tab -->
+  <div id="cpanel-outlets" style="display:none">
+    <div class="config-actions">
+      <span class="sup-count" id="outletCount"></span>
+      <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openOutletModal()">+ Add Outlet</button>
+    </div>
+    <div id="outletList"></div>
+  </div>
+
+  <!-- Staff sub-tab -->
+  <div id="cpanel-staff" style="display:none">
+    <div class="config-actions">
+      <span class="sup-count" id="staffCount"></span>
+      <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openStaffModal()">+ Add Staff</button>
+    </div>
+    <div id="staffList"></div>
+
+    <div style="margin-top:28px;border-top:2px solid var(--border);padding-top:20px">
+      <div class="config-actions" style="margin-bottom:12px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--primary)">Authority Matrix</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Defines who approves PRs at each spending level. Tiers are evaluated lowest first.</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="resetAuthMatrix()" style="margin-left:auto">↺ Reset</button>
+        <button class="btn btn-primary btn-sm" onclick="openAmModal()">+ Add Level</button>
+      </div>
+      <div id="amList"></div>
+    </div>
+  </div>
+
+  <!-- Departments sub-tab -->
+  <div id="cpanel-depts" style="display:none">
+    <div class="config-actions" style="margin-bottom:16px">
+      <input id="deptInput" placeholder="New department name..." style="width:240px" onkeydown="if(event.key==='Enter')addDept()">
+      <button class="btn btn-primary btn-sm" onclick="addDept()">+ Add</button>
+      <button class="btn btn-outline btn-sm" onclick="resetDepts()" style="margin-left:auto">↺ Reset to default</button>
+    </div>
+    <div id="deptChips"></div>
+  </div>
+
+</div>
+
+<!-- ════════ OUTLET MODAL ════════ -->
+<div class="overlay" id="outletOverlay">
+  <div class="modal" style="width:420px">
+    <div class="modal-hd">
+      <h3 id="outletModalTitle">Add Outlet</h3>
+      <button class="modal-close" onclick="closeOutletModal()">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="f"><label>Outlet Name *</label><input id="oName" placeholder="e.g. Mid Valley (MV)"></div>
+      <div class="f"><label>Address</label><textarea id="oAddr" style="min-height:72px" placeholder="Full address"></textarea></div>
+    </div>
+    <div class="btn-group" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeOutletModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOutlet()">Save Outlet</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════ VENDOR MODAL ════════ -->
+<div class="overlay" id="supOverlay">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3 id="supModalTitle">Add Vendor</h3>
+      <button class="modal-close" onclick="closeSupModal()">✕</button>
+    </div>
+    <div class="fg" style="gap:12px">
+      <div class="f span2">
+        <label>Company Name *</label>
+        <input id="sName" placeholder="Full company name">
+      </div>
+      <div class="f">
+        <label>Contact Person</label>
+        <input id="sContact" placeholder="Name">
+      </div>
+      <div class="f">
+        <label>Phone</label>
+        <input id="sPhone" placeholder="+60 12-345 6789">
+      </div>
+      <div class="f span2">
+        <label>Email</label>
+        <input id="sEmail" type="email" placeholder="vendor@company.com">
+      </div>
+      <div class="f span2">
+        <label>Address</label>
+        <textarea id="sAddr" placeholder="Full business address" style="min-height:60px"></textarea>
+      </div>
+      <div class="f">
+        <label>SSM / ROC No.</label>
+        <input id="sSsm" placeholder="Company registration no.">
+      </div>
+      <div class="f">
+        <label>Default Payment Terms</label>
+        <input id="sPayTerms" placeholder="e.g. 30 days, Cash on delivery">
+      </div>
+      <div class="f span2">
+        <label>Bank Account <span class="opt">(optional)</span></label>
+        <input id="sBank" placeholder="Bank name · Account number">
+      </div>
+      <div class="f span2">
+        <label>Notes <span class="opt">(optional)</span></label>
+        <textarea id="sNotes" placeholder="Internal notes..." style="min-height:52px"></textarea>
+      </div>
+    </div>
+    <div class="btn-group" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeSupModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSup()">Save Vendor</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ AUTHORITY MATRIX MODAL ════════ -->
+<div class="overlay" id="amOverlay">
+  <div class="modal" style="width:400px">
+    <div class="modal-hd">
+      <h3 id="amModalTitle">Add Authority Level</h3>
+      <button class="modal-close" onclick="closeAmModal()">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="f"><label>Role / Title *</label><input id="amRole" placeholder="e.g. Manager, HOD, COO, CEO"></div>
+      <div class="f">
+        <label>Max Amount (RM) <span class="opt">— leave blank for "unlimited / above all"</span></label>
+        <input id="amMax" type="number" min="0" step="0.01" placeholder="e.g. 3000">
+      </div>
+      <div class="f">
+        <label>Assigned Approver <span class="opt">(optional — pre-fills signatory in PR)</span></label>
+        <select id="amStaff"><option value="">None / unassigned</option></select>
+      </div>
+    </div>
+    <div class="btn-group" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeAmModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAmEntry()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ STAFF MODAL ════════ -->
+<div class="overlay" id="staffOverlay">
+  <div class="modal" style="width:380px">
+    <div class="modal-hd">
+      <h3 id="staffModalTitle">Add Staff</h3>
+      <button class="modal-close" onclick="closeStaffModal()">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="f"><label>Full Name *</label><input id="stName" placeholder="e.g. Ahmad bin Ali"></div>
+      <div class="f"><label>Position / Designation *</label><input id="stPos" placeholder="e.g. Operations Manager"></div>
+    </div>
+    <div class="btn-group" style="margin-top:20px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeStaffModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStaff()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+
+if (typeof pdfjsLib !== 'undefined')
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+// ════════════════════════════════════════════════════════════════════
+// One self-contained file by design (share/host as a single .html, no build).
+// Section tags: [CORE] create/edit the combined PR+PO, parse invoice, PDF,
+// drafts · [PHASE 2] Configuration tab, authority matrix, backend plumbing ·
+// [INFRA] shared plumbing. Search the ── NAME ── banners to jump around.
+// ════════════════════════════════════════════════════════════════════
+
+// ── COMPANY CONSTANTS ──
+const CO_MAP = {
+  glow: {
+    key:   'glow',
+    short: 'GLOW',
+    sub:   'International Malaysia Sdn. Bhd.',
+    name:  'GLOW INTERNATIONAL MALAYSIA SDN. BHD.',
+    coNo:  'Co. No. 1089377-V',
+    addr1: 'A-10-3, Northpoint, Mid Valley City,',
+    addr2: 'Medan Syed Putra Utara, 59200 Kuala Lumpur.',
+    email: 'ops2@glolasercentres.com',
+    web:   'www.glolasercentres.com',
+    prPrefix: 'GLO',
+    poPrefix: 'GLO',
+    logo:  'data:image/jpeg;base64,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', // default seeded from Ops's supplied logo file (2026-07-03)
+  },
+  brightcare: {
+    key:   'brightcare',
+    short: 'BRIGHTCARE',
+    sub:   'Sdn. Bhd.',
+    name:  'BRIGHTCARE SDN. BHD.',
+    coNo:  'Co. No. —',
+    addr1: '—',
+    addr2: '',
+    email: '',
+    web:   '',
+    prPrefix: 'BC',
+    poPrefix: 'BC',
+    logo:  'data:image/jpeg;base64,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', // default seeded from Ops's supplied logo file (2026-07-03)
+  },
+};
+let CO = CO_MAP.glow;
+
+// ── BACKEND (Google Apps Script) ──
+// Paste your deployed web app URL here — see SETUP_INSTRUCTIONS.md.
+const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzSUPxl6ZOuF7s5PQNHW29n-GL6HKohh8Ef66brt2GEMnFkh63ywsJxZwxMB16v_3w/exec';
+const backendConfigured = () => BACKEND_URL.startsWith('http');
+
+function apiGet(action, params = {}) {
+  const qs = new URLSearchParams({ action, ...params }).toString();
+  return fetch(`${BACKEND_URL}?${qs}`).then(r => r.json());
+}
+function apiPost(action, body = {}) {
+  // No custom Content-Type header — keeps this a "simple" request so the
+  // browser skips the CORS preflight that Apps Script web apps can't answer.
+  return fetch(BACKEND_URL, { method: 'POST', body: JSON.stringify({ action, ...body }) }).then(r => r.json());
+}
+
+function selectCompany(key) {
+  CO = CO_MAP[key];
+  $('coOverlay').classList.remove('open');
+  $('navBrand').childNodes[0].textContent = CO.short;
+  $('navSub').textContent = CO.sub;
+  $('homeSubtitle').textContent = CO.name + (CO.coNo !== 'Co. No. —' ? ' · ' + CO.coNo : '');
+  refreshSupDropdown();
+  refreshOutletDropdowns();
+  updatePaperHeader();
+}
+
+function showCoSelector() {
+  $('coOverlay').classList.add('open');
+}
+
+// ── STATE ── one PR+PO pair per document; activeSection = the visible layout
+let activeSection = 'PR';
+let currentDraftId = null;
+
+// ── LOCAL CACHE (fallback only — backend is the source of truth) ──
+const db = {
+  get: (k,d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set: (k,v) => localStorage.setItem(k, JSON.stringify(v)),
+};
+
+// ── SHARED CONFIG (synced via backend) ──
+let CFG = { vendors: [], outlets: [], depts: [], staff: [], authMatrix: [], companies: {} };
+let backendReady = false; // guards against saving before the initial load completes
+
+function toast(msg, isError=false) {
+  let el = $('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.background = isError ? '#dc2626' : '#0f172a';
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.style.opacity = '0', 2600);
+}
+
+function persistConfig() {
+  db.set('glo_config_cache', CFG);
+  if (!backendReady || !backendConfigured()) return;
+  apiPost('saveConfig', { config: CFG }).then(r => {
+    if (r.status !== 'ok') toast('Could not sync config — will retry on reload', true);
+  }).catch(() => toast('Could not sync config — check your connection', true));
+}
+
+const getSuppliers  = () => CFG.vendors;
+const setSuppliers  = v => { CFG.vendors = v; persistConfig(); };
+const getOutlets    = () => CFG.outlets;
+const setOutlets    = v => { CFG.outlets = v; persistConfig(); };
+const getDepts      = () => CFG.depts;
+const setDepts      = v => { CFG.depts = v; persistConfig(); };
+const getStaff      = () => CFG.staff;
+const setStaff      = v => { CFG.staff = v; persistConfig(); };
+const getAuthMatrix = () => CFG.authMatrix && CFG.authMatrix.length ? CFG.authMatrix : DEFAULT_AUTH_MATRIX;
+const setAuthMatrix = v => { CFG.authMatrix = v; persistConfig(); };
+const getCompanies  = () => CFG.companies || {};
+const setCompanies  = v => { CFG.companies = v; persistConfig(); };
+
+// ── MY NAME (local label only — used to tag drafts, not a login) ──
+function getMyName() {
+  let name = db.get('glo_myname', '');
+  if (!name) { name = prompt('Your name (shown on drafts you save):') || 'Unknown'; db.set('glo_myname', name); }
+  return name;
+}
+function changeMyName() {
+  const name = prompt('Your name:', db.get('glo_myname', ''));
+  if (name) { db.set('glo_myname', name); $('navMyName').textContent = name; }
+}
+
+// ── DOC NUMBERING ── manual entry by design (Ops, 2026-07-03); no backend reservation
+
+// ── NAVIGATION ──
+function goTo(page) {
+  ['home','form','config'].forEach(p => {
+    $('page-'+p).classList.toggle('show', p===page);
+    const tab=$('tab-'+p);
+    if(tab) tab.classList.toggle('active', p===page);
+  });
+  if (page==='config') { cfgTab('vendors'); renderSupList(); }
+  if (page==='home') renderDraftsList();
+}
+
+// ── OPEN DOCUMENT ── prefill._section picks the first visible layout; ._draftId marks a resumed draft
+function openDoc(prefill={}) {
+  if (!prefill._draftId) currentDraftId = null;
+
+  // Doc date always follows the system date (local, not UTC) — invoice/draft dates never override it.
+  // Date Required keeps a saved draft/prefill value if present.
+  const today = new Date().toLocaleDateString('en-CA'); // en-CA = YYYY-MM-DD in local time
+  $('fDate').value = today;
+  $('fDelivDate').value = prefill.delivDate || today;
+  $('fDept').value = '';
+
+  refreshDeptDropdown();
+  refreshStaffDropdowns();
+  updatePaperHeader();
+  refreshOutletDropdowns();
+
+  // Ship To defaults
+  $('fShipAttn').value  = '';
+  $('fShipPhone').value = '';
+  $('fShipEmail').value = CO.email || '';
+
+  // Clear variable fields — incl. fPrepBy/fAuthBy/taxSel (audit fix: these used to carry over between documents).
+  ['fSup','fSupSearch','fSupContact','fSupAddr','fSupPhone','fSupEmail',
+   'fInvRef','fJustify','fRemarks','fPayTerms','fShipOutlet','fShipAddr',
+   'fPrepBy','fPrepPos','fAuthBy','fAuthPos','taxSel'].forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    if (el.tagName==='SELECT') el.selectedIndex=0; else el.value='';
+  });
+  $('itemsBody').innerHTML='';
+  closeSupCombo();
+
+  refreshSupDropdown();
+
+  // Doc numbers: blank on new docs; resumed drafts supply their own.
+  $('fNoPR').value = '';
+  $('fNoPO').value = '';
+  $('fPrRef').value = '';
+  $('fNoPR').placeholder = 'PR No. (enter manually)';
+  $('fNoPO').placeholder = 'PO No. (enter manually)';
+
+  // Apply invoice prefill
+  if (prefill.invoiceRef) $('fInvRef').value = prefill.invoiceRef;
+  if (prefill.notes)      $('fJustify').value = prefill.notes;
+  if (prefill.supplierId) setSupplierSelection(prefill.supplierId);
+  if (prefill.items && prefill.items.length) prefill.items.forEach(it => addRow(it));
+  else { addRow(); addRow(); }
+
+  recalc();
+  switchSection(prefill._section || 'PR');
+
+  $('parsedBanner').innerHTML = prefill._parsed
+    ? `<div class="alert alert-warn">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        Pre-filled from uploaded invoice — review both the PR and PO views carefully before downloading.
+      </div>`
+    : '';
+
+  goTo('form');
+}
+
+// The PO view's PR Ref mirrors the PR number field.
+function updatePrRefDisplay() {
+  const el = $('fPrRef');
+  if (el) el.value = $('fNoPR').value || '';
+}
+
+// ── SWITCH BETWEEN THE PR AND PO LAYOUTS ── one shared data model, two chromes; nothing to sync
+function switchSection(section) {
+  activeSection = section;
+  const ispr = section === 'PR';
+
+  $('sectiontab-PR').classList.toggle('active', ispr);
+  $('sectiontab-PO').classList.toggle('active', !ispr);
+
+  $('fTitle').textContent = ispr ? 'PURCHASE REQUISITION' : 'PURCHASE ORDER';
+  $('fDocBadge').innerHTML = `<span class="badge ${ispr?'badge-pr':'badge-po'}">${section}</span>`;
+  $('fNoPR').style.display = ispr ? '' : 'none';
+  $('fNoPO').style.display = ispr ? 'none' : '';
+
+  $('prRefRow').style.display     = ispr ? 'none' : '';
+  $('shipToCard').style.display   = ispr ? 'none' : '';
+  $('justLabel').textContent      = ispr ? 'Purpose / Justification' : 'Notes';
+  $('dpSfPayTerms').style.display = ispr ? 'none' : '';
+  $('dpSfInvRef').style.display   = ispr ? 'none' : ''; // Vendor Inv. Ref is PO-only
+  $('deptStripLbl').textContent   = ispr ? 'Requested Department' : 'Division / Dept';
+  $('fAuthLbl').textContent       = ispr ? 'Approved By' : 'Authorised By';
+  $('dpAmRef').style.display      = ispr ? '' : 'none';
+  $('dpSigOff').classList.toggle('has-am', ispr);
+
+  // Delivery date: info strip for PR, emphasized box for PO.
+  const delivSlot = $('dpSfDelivSlot');
+  const delivBox  = $('dpDelivBox');
+  const delivLbl  = delivSlot.querySelector('.dp-sf-lbl');
+  if (ispr) {
+    const invRefField = $('dpSfInvRef');
+    invRefField.parentNode.insertBefore(delivSlot, invRefField);
+    delivLbl.textContent = 'Date Required';
+    delivBox.style.display = 'none';
+  } else {
+    delivBox.appendChild(delivSlot);
+    delivLbl.textContent = 'Delivery Required By';
+    delivBox.style.display = 'block';
+  }
+
+  if (ispr) renderAmRefTable();
+
+  // Vendor box: single column for PR, two columns (+ Ship To) for PO
+  $('dpBoxes').classList.toggle('single', ispr);
+
+  updateFootRef();
+}
+
+
+// ── ITEMS TABLE ──
+// Column order: Description [0] | Qty [1] | Unit [2] | UnitPrice [3]
+function addRow(data={}) {
+  const tbody = $('itemsBody');
+  const i = tbody.rows.length+1;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="td-num">${i}</td>
+    <td><input type="text" placeholder="Item description" value="${esc(data.description||'')}" oninput="recalc()"></td>
+    <td><input type="number" placeholder="0" min="0" step="any" value="${data.qty||''}" oninput="recalc()" style="text-align:center;width:50px"></td>
+    <td><input type="text" placeholder="pcs" value="${esc(data.unit||'')}" style="width:60px;text-align:center"></td>
+    <td><input type="number" placeholder="0.00" min="0" step="0.01" value="${data.unitPrice||''}" oninput="recalc()" style="text-align:right;width:100px"></td>
+    <td class="td-total" id="rt${i}">RM 0.00</td>
+    <td class="td-del"><button class="btn btn-ghost btn-sm" onclick="delRow(this)" title="Remove">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  recalc();
+}
+
+function delRow(btn) {
+  btn.closest('tr').remove();
+  document.querySelectorAll('#itemsBody tr').forEach((tr,i) => {
+    tr.cells[0].textContent = i+1;
+    tr.querySelector('.td-total').id = `rt${i+1}`;
+  });
+  recalc();
+}
+
+function recalc() {
+  let sub=0;
+  document.querySelectorAll('#itemsBody tr').forEach(tr => {
+    const ins = tr.querySelectorAll('input');
+    const qty   = parseFloat(ins[1]?.value)||0;  // index 1 = qty
+    const price = parseFloat(ins[3]?.value)||0;  // index 3 = unit price
+    const row   = qty*price;
+    sub += row;
+    const cell = tr.querySelector('.td-total');
+    if (cell) cell.textContent = 'RM '+row.toFixed(2);
+  });
+  const pct = parseFloat($('taxSel').value)||0;
+  const tax = sub*pct/100;
+  const total = sub + tax;
+  $('tSub').textContent   = 'RM '+sub.toFixed(2);
+  $('tTax').textContent   = 'RM '+tax.toFixed(2);
+  $('tTotal').textContent = 'RM '+total.toFixed(2);
+  autoSelectApprover(total);
+}
+
+function autoSelectApprover(total) {
+  // Re-evaluated on every recalc so the required approver tracks live spend.
+  // Audit fix: always reflect the current tier, incl. clearing when the tier has no assignee.
+  const sel = $('fAuthBy');
+  if (!sel) return;
+  const matrix = getAuthMatrix().slice().sort((a,b) => (a.maxAmount??Infinity) - (b.maxAmount??Infinity));
+  const tier = matrix.find(m => m.maxAmount === null || total <= m.maxAmount);
+  if (tier?.staffId) {
+    sel.value = tier.staffId;
+    onStaffSelect('auth');
+  } else {
+    sel.value = '';
+    $('fAuthPos').value = '';
+  }
+  renderAmRefTable(total);
+}
+
+function renderAmRefTable(total) {
+  const tbl = $('dpAmTable');
+  if (!tbl) return;
+  const matrix = getAuthMatrix().slice().sort((a,b) => (a.maxAmount??Infinity) - (b.maxAmount??Infinity));
+  const staff = getStaff();
+  const cur = total ?? (parseFloat(($('tTotal')?.textContent||'').replace('RM ',''))||0);
+  const active = matrix.find(n => n.maxAmount === null || cur <= n.maxAmount); // lowest tier that fits
+  tbl.innerHTML = `<thead><tr><th>Role</th><th>Up to (RM)</th><th>Approver</th></tr></thead><tbody>` +
+    matrix.map(m => {
+      const person = staff.find(s => s.id === m.staffId);
+      const isActive = m === active && (m.maxAmount !== null || cur > 0);
+      return `<tr class="${isActive ? 'am-active' : ''}">
+        <td>${esc(m.role)}</td>
+        <td>${m.maxAmount ? 'RM '+m.maxAmount.toLocaleString() : 'Unlimited'}</td>
+        <td>${person ? esc(person.name) : '<span style="color:var(--muted)">—</span>'}</td>
+      </tr>`;
+    }).join('') + '</tbody>';
+}
+
+// ── SUPPLIER COMBOBOX (type-to-filter, click or arrow-key to select) ──
+let supComboIdx = -1; // index of the highlighted item while the list is open
+
+// Re-syncs the search text if the selected vendor was renamed; clears it if deleted.
+function refreshSupDropdown() {
+  const hidden = $('fSup');
+  const search = $('fSupSearch');
+  if (!hidden || !search) return;
+  if (!hidden.value) return;
+  const s = getSuppliers().find(s => s.id === hidden.value);
+  if (s) search.value = s.name;
+  else { hidden.value = ''; search.value = ''; }
+}
+
+function setSupplierSelection(id) {
+  const s = getSuppliers().find(s => s.id === id);
+  $('fSup').value = id || '';
+  $('fSupSearch').value = s ? s.name : '';
+  closeSupCombo();
+  if (s) onSupplierSelect();
+}
+
+function renderSupComboList(query) {
+  const list = $('fSupList');
+  const q = (query || '').trim().toLowerCase();
+  const all = getSuppliers().slice().sort(byName);
+  const matches = (q ? all.filter(s => s.name.toLowerCase().includes(q)) : all).slice(0, 50);
+  supComboIdx = -1;
+  if (!matches.length) {
+    list.innerHTML = `<div class="dp-combo-empty">No vendors match${q ? ` "${esc(query)}"` : ''}.</div>`;
+  } else {
+    list.innerHTML = matches.map((s, i) =>
+      `<div class="dp-combo-item" data-id="${esc(s.id)}" data-idx="${i}" onmousedown="event.preventDefault();setSupplierSelection('${esc(s.id)}')">${esc(s.name)}</div>`
+    ).join('');
+  }
+  list.classList.add('open');
+}
+
+function onSupSearchInput() {
+  // Typing invalidates the previous selection until a vendor is (re)picked.
+  $('fSup').value = '';
+  // A fully cleared box also clears the dependent vendor fields; mid-typing leaves them alone.
+  if (!$('fSupSearch').value.trim()) {
+    ['fSupContact','fSupAddr','fSupPhone','fSupEmail','fPayTerms'].forEach(id => {
+      $(id).value = '';
+    });
+  }
+  renderSupComboList($('fSupSearch').value);
+}
+
+function onSupSearchFocus() {
+  renderSupComboList($('fSupSearch').value);
+}
+
+function closeSupCombo() {
+  const list = $('fSupList');
+  if (list) list.classList.remove('open');
+  supComboIdx = -1;
+}
+
+function onSupSearchKeydown(e) {
+  const list = $('fSupList');
+  if (!list.classList.contains('open')) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') renderSupComboList($('fSupSearch').value);
+    return;
+  }
+  const items = Array.from(list.querySelectorAll('.dp-combo-item'));
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (items.length) { supComboIdx = Math.min(supComboIdx + 1, items.length - 1); highlightSupCombo(items); }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (items.length) { supComboIdx = Math.max(supComboIdx - 1, 0); highlightSupCombo(items); }
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (supComboIdx >= 0 && items[supComboIdx]) setSupplierSelection(items[supComboIdx].dataset.id);
+  } else if (e.key === 'Escape') {
+    closeSupCombo();
+  }
+}
+
+function highlightSupCombo(items) {
+  items.forEach((el, i) => el.classList.toggle('active', i === supComboIdx));
+  const active = items[supComboIdx];
+  if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#fSupCombo')) closeSupCombo();
+});
+
+function onSupplierSelect() {
+  const s = getSuppliers().find(s => s.id===$('fSup').value);
+  if (!s) return;
+  $('fSupContact').value = s.contact||'';
+  $('fSupAddr').value    = s.address||'';
+  $('fSupPhone').value   = s.phone||'';
+  $('fSupEmail').value   = s.email||'';
+  $('fPayTerms').value = s.payTerms||'';
+}
+
+// ── INVOICE UPLOAD ──
+const dz=$('dropzone'), fi=$('fileIn');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');processFile(e.dataTransfer.files[0]);});
+fi.addEventListener('change',e=>processFile(e.target.files[0]));
+
+function setUploadAlert(html){$('uploadAlert').innerHTML=html;}
+
+// A parsed invoice lands directly on the combined document, both views pre-filled.
+async function processFile(file){
+  if(!file) return;
+  setUploadAlert(`<div class="alert alert-info"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg> Reading file…</div>`);
+  try {
+    if(file.type==='application/pdf'){
+      if(typeof pdfjsLib==='undefined') throw new Error('PDF.js not loaded');
+      const text=await extractPdfText(file);
+      const parsed=parseInvoiceText(text, getSuppliers());
+      parsed._parsed=true;
+      setUploadAlert(`<div class="alert alert-ok"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg> Invoice parsed — ${parsed.items.length} item(s) found. Review the PR and PO views below.</div>`);
+      openDoc(parsed);
+    } else if(file.type.startsWith('image/')){
+      setUploadAlert(`<div class="alert alert-info"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg> Image uploaded — text extraction not available for images. Fill in the form manually.</div>`);
+      openDoc({_parsed:false});
+    } else throw new Error('Unsupported file type. Please upload a PDF or image.');
+  } catch(err){
+    setUploadAlert(`<div class="alert" style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b">⚠ ${err.message||'Could not read file.'} You can still start from scratch.</div>`);
+    openDoc({_parsed:false});
+  }
+}
+
+async function extractPdfText(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let out='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    // Group items by rounded Y, then sort each row by X so columns read left→right
+    const rows={};
+    content.items.forEach(it=>{
+      const y=Math.round(it.transform[5]);
+      (rows[y]=rows[y]||[]).push({str:it.str,x:it.transform[4]});
+    });
+    Object.keys(rows).sort((a,b)=>b-a).forEach(y=>{
+      const sorted=rows[y].sort((a,b)=>a.x-b.x);
+      out+=sorted.map(it=>it.str).join('\t')+'\n';
+    });
+  }
+  return out;
+}
+
+// Score a vendor name against invoice text using word-token overlap
+function vendorScore(vendorName, text){
+  const stop=new Set(['sdn','bhd','plt','pte','ltd','sdn.','bhd.','enterprise','trading','&','and','(m)','co.','corp.','corporation','the','of']);
+  const tokens=s=>s.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(t=>t.length>1&&!stop.has(t));
+  const vToks=tokens(vendorName);
+  if(!vToks.length) return 0;
+  const tLow=text.toLowerCase();
+  const matched=vToks.filter(t=>tLow.includes(t)).length;
+  return matched/vToks.length;
+}
+
+function parseInvoiceText(raw, suppliers){
+  const result={items:[],invoiceRef:'',supplierId:''};
+
+  // Invoice ref
+  const invM=raw.match(/(?:invoice\s*(?:no\.?|number|#|:))\s*([\w\-\/]+)/i);
+  if(invM) result.invoiceRef=invM[1].trim();
+
+  // Fuzzy vendor match — score every known supplier against the full text
+  if(suppliers&&suppliers.length){
+    let best=null, bestScore=0;
+    suppliers.forEach(s=>{
+      const sc=vendorScore(s.name, raw);
+      if(sc>bestScore){bestScore=sc;best=s;}
+    });
+    if(best&&bestScore>=0.5) result.supplierId=best.id;
+  }
+
+  // Item parsing — handle tab-separated (from our extractor) and whitespace-collapsed lines
+  const skipRx=/(?:total|subtotal|grand\s*total|tax|gst|sst|amount\s*due|balance\s*due|deposit|discount|rounding|invoice|date|page|from|to:|bill|ship|tel|fax|email|reg\s*no|ssm|account|bank)/i;
+  const lines=raw.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
+
+  lines.forEach(line=>{
+    if(skipRx.test(line)) return;
+
+    const cols=line.split('\t').map(c=>c.trim()).filter(Boolean);
+
+    // Tab-separated: need ≥3 cols, last two are numbers (unit price, total)
+    if(cols.length>=3){
+      const nums=cols.map(c=>parseFloat(c.replace(/,/g,''))).filter(n=>!isNaN(n)&&n>0);
+      if(nums.length>=2){
+        const total=nums[nums.length-1];
+        const unitPrice=nums[nums.length-2];
+        // qty is either explicit or derived
+        let qty=nums.length>=3?nums[nums.length-3]:null;
+        if(!qty||qty<=0) qty=unitPrice>0?parseFloat((total/unitPrice).toFixed(4)):1;
+        // Description: first col that's not purely numeric
+        const desc=cols.find(c=>isNaN(parseFloat(c.replace(/,/g,'')))&&c.length>2);
+        if(desc&&unitPrice>0&&unitPrice<500000){
+          result.items.push({description:desc,qty,unit:'pcs',unitPrice});
+          return;
+        }
+      }
+    }
+
+    // Fallback: single line with description + one price (no qty info)
+    const m=line.match(/^(.{4,60?}?)\s{2,}([\d,]+\.\d{2})\s*$/);
+    if(m){
+      const amt=parseFloat(m[2].replace(/,/g,''));
+      if(amt>0&&amt<500000&&!skipRx.test(m[1]))
+        result.items.push({description:m[1].trim(),qty:1,unit:'pcs',unitPrice:amt});
+    }
+  });
+
+  return result;
+}
+
+// ── PDF GENERATION ──
+function getFormData(){
+  const supId=$('fSup').value;
+  const sup=getSuppliers().find(s=>s.id===supId);
+  // Audit fix: fall back to the typed text when no saved vendor matched (one-off vendors).
+  const supNameFallback = $('fSupSearch').value.trim();
+  const items=[];
+  document.querySelectorAll('#itemsBody tr').forEach((tr,i)=>{
+    const ins=tr.querySelectorAll('input');
+    const desc=ins[0]?.value.trim()||'';
+    const qty=parseFloat(ins[1]?.value)||0;
+    const unit=ins[2]?.value.trim()||'';
+    const price=parseFloat(ins[3]?.value)||0;
+    if(desc||qty||price) items.push({no:i+1,desc,qty,unit,unitPrice:price,total:qty*price});
+  });
+  const taxPct=parseFloat($('taxSel').value)||0;
+  const subtotal=items.reduce((s,it)=>s+it.total,0);
+  const tax=subtotal*taxPct/100;
+  return {
+    prNo:$('fNoPR').value,
+    poNo:$('fNoPO').value,
+    date:$('fDate').value,
+    delivDate:$('fDelivDate').value,
+    dept:$('fDept').value,
+    supName:sup?sup.name:supNameFallback,
+    supContact:$('fSupContact').value,
+    supAddr:$('fSupAddr').value,
+    supPhone:$('fSupPhone').value,
+    supEmail:$('fSupEmail').value,
+    payTerms:$('fPayTerms').value,
+    invRef:$('fInvRef').value,
+    shipOutlet:$('fShipOutlet').value,
+    shipAddr:$('fShipAddr').value,
+    shipAttn:$('fShipAttn').value,
+    shipPhone:$('fShipPhone').value,
+    shipEmail:$('fShipEmail').value,
+    justify:$('fJustify').value,
+    remarks:$('fRemarks').value,
+    prepName: getStaff().find(s=>s.id===$('fPrepBy')?.value)?.name||'',
+    prepPos:  $('fPrepPos')?.value||'',
+    authName: getStaff().find(s=>s.id===$('fAuthBy')?.value)?.name||'',
+    authPos:  $('fAuthPos')?.value||'',
+    items,taxPct,subtotal,tax,total:subtotal+tax,
+  };
+}
+
+function fmtDate(s){if(!s)return'—';const d=new Date(s);return isNaN(d)?s:d.toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'});}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmt(n){return'RM '+n.toFixed(2);}
+// A→Z comparator — objects with .name or plain strings.
+const byName = (a,b) => String(a?.name ?? a ?? '').localeCompare(String(b?.name ?? b ?? ''));
+// Insert-or-replace by .id — shared by every Config save function.
+const upsert = (arr, item) => { const i = arr.findIndex(x => x.id === item.id); i >= 0 ? arr[i] = item : arr.push(item); return arr; };
+// Strip filename-illegal chars — PO numbers contain "/" (e.g. GLO-2026/07/003).
+function sanitizeFilename(s){return String(s||'').replace(/[\/\\:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim().slice(0,80)||'Unnamed';}
+
+async function downloadPDF(){
+  updatePrRefDisplay();
+
+  const {jsPDF}=window.jspdf;
+  const f=getFormData();
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+
+  // One PDF: PR section first, then PO, from the same form data.
+  const prRange = renderDocPage(doc, f, true);
+  doc.addPage();
+  const poRange = renderDocPage(doc, f, false);
+  const ranges = [prRange, poRange];
+
+  // ── FOOTER ── rule + doc ref on every page; page numbers restart per section (PR / PO)
+  const W=210,H=297,M=14;
+  const totalPages = doc.getNumberOfPages();
+  for(let p=1;p<=totalPages;p++){
+    doc.setPage(p);
+    const range = ranges.find(r => p>=r.startPage && p<=r.endPage) || ranges[ranges.length-1];
+    doc.setDrawColor(200,200,200); doc.setLineWidth(0.25);
+    doc.line(M,H-10,W-M,H-10);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(153,153,153);
+    const sp=p-range.startPage+1, st=range.endPage-range.startPage+1;
+    doc.text(`${range.docNo}  ·  ${CO.name}  ·  Page ${sp} of ${st}`,W/2,H-6,{align:'center'});
+  }
+
+  const vendorPart = sanitizeFilename(f.supName || 'Vendor');
+  const numPart = sanitizeFilename(f.poNo || f.prNo || 'Doc');
+  doc.save(`${vendorPart}_${numPart}.pdf`);
+
+  logGeneratedDoc();
+}
+
+// Draws one section (PR or PO); returns its page range so the footer loop maps doc numbers to pages.
+function renderDocPage(doc, f, ispr){
+  const startPage = doc.getNumberOfPages();
+  const pageDocNo = ispr ? f.prNo : f.poNo;
+  const W=210,H=297,M=14;
+  const footerReserve=16;   // clear space kept above the footer rule/doc-ref line
+
+  // Monochrome palette — every value is a pure gray (R=G=B), no color tint.
+  const C={
+    black:[0,0,0], dark:[30,30,30], mid:[90,90,90],
+    light:[220,220,220], vlight:[248,248,248], white:[255,255,255],
+    navy:[20,20,20], slate:[60,60,60], muted:[150,150,150], indigo:[45,45,45],
+  };
+
+  // ── HEADER ── logo (if any) sits left of the company block
+  let textX = M;
+  if (CO.logo) {
+    try {
+      const props = doc.getImageProperties(CO.logo);
+      const logoH = 14;
+      const logoW = Math.min(30, (props.width / props.height) * logoH);
+      // fileType read from the data URL — works for JPEG or legacy PNG logos.
+      doc.addImage(CO.logo, props.fileType, M, 3, logoW, logoH);
+      textX = M + logoW + 4;
+    } catch (e) { /* malformed/unsupported image data — skip it, don't break the PDF */ }
+  }
+  // Reserve the doc-type heading's width first (boundaryX); the left block wraps at a
+  // constant font size instead of shrinking, and everything below is laid out from the
+  // measured header height.
+  const docTypeText = ispr ? 'PURCHASE REQUISITION' : 'PURCHASE ORDER';
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(ispr?13:14);
+  const rightBlockW = doc.getTextWidth(docTypeText) + 6; // +gutter before the boundary
+  const boundaryX = (W - M) - rightBlockW;
+  const availW = boundaryX - textX;
+  const NAME_LINE_H = 6; // mm between wrapped name lines — matches the original name-row → meta-row gap
+  const META_LINE_H = 5; // mm between wrapped meta lines — matches the original meta1 → meta2 gap
+
+  doc.setTextColor(...C.black);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(15);
+  const nameLines = doc.splitTextToSize(CO.name, availW);
+  doc.text(nameLines, textX, 11);
+  let leftY = 11 + (nameLines.length - 1) * NAME_LINE_H + NAME_LINE_H;
+
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...C.mid);
+  const metaLine1 = `${CO.coNo}  ·  ${CO.addr1} ${CO.addr2}`;
+  const metaLine2 = `${CO.email}  ·  ${CO.web}`;
+  const meta1Lines = doc.splitTextToSize(metaLine1, availW);
+  doc.text(meta1Lines, textX, leftY);
+  leftY += (meta1Lines.length - 1) * META_LINE_H + META_LINE_H;
+  const meta2Lines = doc.splitTextToSize(metaLine2, availW);
+  doc.text(meta2Lines, textX, leftY);
+  leftY += (meta2Lines.length - 1) * META_LINE_H;
+
+  // Doc type right side
+  doc.setTextColor(...C.black);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(ispr?13:14);
+  doc.text(docTypeText, W-M, 11, {align:'right'});
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...C.mid);
+  doc.text(pageDocNo, W-M, 17, {align:'right'});
+  if(!ispr&&f.prNo) doc.text(`PR Ref: ${f.prNo}`, W-M, 22, {align:'right'});
+  doc.text(fmtDate(f.date), W-M, ispr||!f.prNo?22:27, {align:'right'});
+
+  // Divider sits under the taller column, never above 34mm.
+  const headerDividerY = Math.max(34, leftY + 6);
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.7);
+  doc.line(0, headerDividerY, W, headerDividerY);
+
+  let y = headerDividerY + 6;
+  // Page-break guard for content drawn manually below the items table (totals, notes) —
+  // audit fix: these used to draw at whatever y remained and could overlap the footer.
+  const ensure = h => { if (y + h > H - footerReserve) { doc.addPage(); y = 20; } };
+
+  // ── INFO STRIP ── (Vendor Inv. Ref is PO-only — a PR predates the vendor's invoice)
+  const infoItems=ispr
+    ? [['Requested Department',f.dept||'—'],['Date Required',fmtDate(f.delivDate)]]
+    : [['Division / Dept',f.dept||'—'],['Payment Terms',f.payTerms||'—'],['Vendor Inv. Ref',f.invRef||'—']];
+  const cw=(W-M*2)/infoItems.length;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  const infoLines=infoItems.map(([,val])=>doc.splitTextToSize(String(val),cw-8).slice(0,2));
+  const infoStripH=Math.max(15, 9+Math.max(...infoLines.map(l=>l.length))*4);
+  doc.setDrawColor(...C.light); doc.setLineWidth(0.2);
+  doc.rect(M,y,W-M*2,infoStripH,'S');
+  infoItems.forEach(([lbl],i)=>{
+    const x=M+i*cw+4;
+    if(i>0){doc.setDrawColor(...C.light); doc.line(M+i*cw,y,M+i*cw,y+infoStripH);}
+    doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(...C.mid);
+    doc.text(lbl.toUpperCase(),x,y+5);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.dark);
+    doc.text(infoLines[i],x,y+11);
+  });
+  y+=infoStripH+6;
+
+  // ── DELIVERY REQUIRED BY (emphasized strip, PO only) ──
+  if(!ispr){
+    const delivH=14;
+    doc.setFillColor(250,250,250);
+    doc.setDrawColor(...C.black); doc.setLineWidth(0.6);
+    doc.rect(M,y,W-M*2,delivH,'FD');
+    doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(...C.mid);
+    doc.text('DELIVERY REQUIRED BY',M+4,y+5.5);
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...C.black);
+    doc.text(fmtDate(f.delivDate),M+4,y+11.5);
+    y+=delivH+6;
+  }
+
+  // ── VENDOR + SHIP TO (side by side for PO) ──
+  const hasVendor=!!f.supName;
+  const hasShip=!ispr&&(!!f.shipAddr||!!f.shipOutlet);
+
+  if(hasVendor||hasShip){
+    const boxW=hasShip?(W-M*2)/2-2:W-M*2;
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+    const supAddrLines  = f.supAddr  ? doc.splitTextToSize(f.supAddr,  boxW-8).slice(0,2) : [];
+    const shipAddrLines = f.shipAddr ? doc.splitTextToSize(f.shipAddr, boxW-8).slice(0,2) : [];
+    const vendorBoxH = 16 + Math.max(supAddrLines.length, shipAddrLines.length, 1)*3.6;
+
+    // Vendor box
+    doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(...C.mid);
+    doc.text('VENDOR / SUPPLIER', M, y);
+    y+=3;
+    doc.setDrawColor(...C.light); doc.setLineWidth(0.3);
+    doc.rect(M,y,boxW,vendorBoxH,'S');
+    let vy=y+6;
+    if(hasVendor){
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...C.black);
+      doc.text(f.supName.substring(0,52), M+4, vy); vy+=5;
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...C.dark);
+      if(supAddrLines.length){ doc.text(supAddrLines, M+4, vy); vy+=supAddrLines.length*3.6+0.5; }
+      const cl=[f.supContact,f.supPhone,f.supEmail].filter(Boolean).join('  ·  ');
+      if(cl) doc.text(cl.substring(0,65),M+4,vy);
+    }
+
+    // Ship To box (PO only)
+    if(hasShip){
+      const sx=M+boxW+4;
+      doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(...C.mid);
+      doc.text('SHIP TO / DELIVER TO', sx, y-3);
+      doc.setDrawColor(...C.light); doc.rect(sx,y,boxW,vendorBoxH,'S');
+      let sy=y+6;
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...C.black);
+      doc.text(CO.name.substring(0,36), sx+4, sy); sy+=5;
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...C.dark);
+      if(f.shipOutlet) doc.text(f.shipOutlet, sx+4, sy); sy+=4;
+      if(shipAddrLines.length){ doc.text(shipAddrLines, sx+4, sy); sy+=shipAddrLines.length*3.6+0.5; }
+      const sl=[f.shipAttn&&`Attn: ${f.shipAttn}`,f.shipPhone].filter(Boolean).join('  ·  ');
+      if(sl) doc.text(sl.substring(0,40),sx+4,sy);
+    }
+
+    y+=vendorBoxH+6;
+  }
+
+  // ── ITEMS TABLE ──
+  const tableBody=f.items.map(it=>[
+    it.no, it.desc,
+    it.qty===0?'':it.qty,
+    it.unit,
+    it.unitPrice===0?'':it.unitPrice.toFixed(2),
+    it.total===0?'':it.total.toFixed(2),
+  ]);
+
+  doc.autoTable({
+    startY:y,
+    theme:'plain',
+    head:[['#','Description','Qty','Unit','Unit price','Total']],
+    body:tableBody,
+    margin:{left:M,right:M,top:20,bottom:footerReserve+4},
+    styles:{fontSize:8.5,cellPadding:{top:2.6,bottom:2.6,left:2,right:2},textColor:C.slate,lineWidth:0},
+    headStyles:{textColor:C.black,fontStyle:'bold',fontSize:8,cellPadding:{top:3,bottom:3,left:2,right:2},lineWidth:0},
+    columnStyles:{
+      0:{halign:'center',cellWidth:7},
+      1:{cellWidth:110},
+      2:{halign:'center',cellWidth:11},
+      3:{halign:'center',cellWidth:12},
+      4:{halign:'right',cellWidth:21},
+      5:{halign:'right',cellWidth:21},
+    },
+    // Horizontal-only rules, matching the paper mockup.
+    didDrawCell: (data) => {
+      const {cell, row} = data;
+      if (row.section === 'head') {
+        doc.setDrawColor(...C.black); doc.setLineWidth(0.4);
+        doc.line(cell.x, cell.y, cell.x+cell.width, cell.y);
+        doc.line(cell.x, cell.y+cell.height, cell.x+cell.width, cell.y+cell.height);
+      } else {
+        doc.setDrawColor(238,238,238); doc.setLineWidth(0.2);
+        doc.line(cell.x, cell.y+cell.height, cell.x+cell.width, cell.y+cell.height);
+      }
+    },
+  });
+  y=doc.lastAutoTable.finalY+4;
+
+  // ── TOTALS (rules only, no fill) ──
+  ensure(32); // subtotal + optional tax + rule + grand total
+  const totX=W-M-65;
+  y+=4;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...C.slate);
+  doc.text('Subtotal',totX,y); doc.text(fmt(f.subtotal),W-M,y,{align:'right'});
+  if(f.taxPct>0){
+    y+=6;
+    doc.text(`SST (${f.taxPct}%)`,totX,y); doc.text(fmt(f.tax),W-M,y,{align:'right'});
+  }
+  y+=4;
+  doc.setDrawColor(...C.black); doc.setLineWidth(0.5);
+  doc.line(totX,y,W-M,y);
+  y+=6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...C.black);
+  doc.text('TOTAL (MYR)',totX,y); doc.text(fmt(f.total),W-M,y,{align:'right'});
+  y+=10;
+
+  // ── NOTES / REMARKS ──
+  const addBox=(label,text)=>{
+    if(!text) return;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+    const lines=doc.splitTextToSize(text,W-M*2-6);
+    const bh=Math.max(10,lines.length*4.5+5);
+    ensure(3+bh+6);
+    doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(...C.muted);
+    doc.text(label,M,y); y+=3;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...C.slate);
+    doc.setDrawColor(...C.light); doc.setLineWidth(0.3);
+    doc.rect(M,y,W-M*2,bh,'S');
+    doc.text(lines,M+3,y+5); y+=bh+6;
+  };
+  addBox(ispr?'PURPOSE / JUSTIFICATION':'NOTES',f.justify);
+  addBox('REMARKS',f.remarks);
+
+  // ── AUTHORITY MATRIX (PR only) + SIGNATORIES ── anchored above the footer; overflows to a fresh page
+  const amStripH=21, amGap=8;
+  const amH=ispr?amStripH+amGap:0;
+  const sigRowH=38;
+  const blockH=amH+sigRowH;
+  const minGapAboveSig=10;  // minimum breathing room below the last content block
+  let by=H-footerReserve-blockH;
+  if(by<y+minGapAboveSig){ doc.addPage(); y=20; by=H-footerReserve-blockH; }
+
+  if(ispr){
+    const matrix=getAuthMatrix().slice().sort((a,b)=>(a.maxAmount??Infinity)-(b.maxAmount??Infinity));
+    const activeTier=matrix.find(m=>m.maxAmount===null||f.total<=m.maxAmount);
+    doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(...C.muted);
+    doc.text('AUTHORITY MATRIX',M,by);
+    by+=4;
+    doc.setDrawColor(...C.dark); doc.setLineWidth(0.3);
+    doc.line(M,by,W-M,by);
+    by+=6;
+    const colW=(W-M*2)/matrix.length;
+    matrix.forEach((m,i)=>{
+      const colX=M+i*colW, x=colX+(i>0?4:0);
+      if(i>0){doc.setDrawColor(...C.light);doc.setLineWidth(0.2);doc.line(colX,by-5,colX,by+6);}
+      const isActive=m===activeTier;
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...C.black);
+      doc.text(m.role,x,by);
+      if(isActive){
+        const tw=doc.getTextWidth(m.role);
+        doc.setDrawColor(...C.black); doc.setLineWidth(0.6);
+        doc.line(x,by+1.3,x+tw,by+1.3);
+      }
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...C.mid);
+      const limitTxt=m.maxAmount?'Up to RM '+m.maxAmount.toLocaleString():'Above all limits';
+      doc.text(limitTxt,x,by+5);
+    });
+    by+=11;
+    doc.setDrawColor(...C.light); doc.setLineWidth(0.2);
+    doc.line(M,by,W-M,by);
+    by+=amGap;
+  }
+
+  // ── SIGNATORIES ──
+  const sigY=by;
+  const sw=(W-M*2-8)/2;
+  [
+    {lbl:'PREPARED BY',              name:f.prepName, pos:f.prepPos},
+    {lbl:ispr?'APPROVED BY':'AUTHORISED BY', name:f.authName, pos:f.authPos},
+  ].forEach(({lbl,name,pos},i)=>{
+    const x=M+i*(sw+8);
+    doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(...C.muted);
+    doc.text(lbl,x,sigY);
+    doc.setDrawColor(153,153,153); doc.setLineWidth(0.3);
+    doc.line(x,sigY+16,x+sw,sigY+16);
+    if(name){
+      doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(...C.navy);
+      doc.text(name.substring(0,40),x,sigY+21);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...C.slate);
+      if(pos) doc.text(pos.substring(0,40),x,sigY+26);
+    } else {
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.slate);
+      doc.text('Name:  ________________________',x,sigY+21);
+    }
+  });
+
+  return { startPage, endPage: doc.getNumberOfPages(), docNo: pageDocNo };
+}
+
+// Deletes the source draft after download. (Tracker logging removed per Ops, 2026-07-03 — CAT is filled manually.)
+function logGeneratedDoc() {
+  const draftId = currentDraftId;
+  currentDraftId = null;
+  if (draftId) apiPost('deleteDraft', { id: draftId }).then(renderDraftsList).catch(()=>{});
+}
+
+// ── DRAFTS ──
+let draftsCache = [];
+
+async function saveDraftFn() {
+  const data = getFormData();
+  const owner = getMyName();
+  try {
+    // 'PRPO' = combined record; legacy 'PR'/'PO' drafts migrate on resume (applyDraftData).
+    const r = await apiPost('saveDraft', { draft: { id: currentDraftId, owner, docType: 'PRPO', company: CO.key, data } });
+    if (r.status === 'ok') { currentDraftId = r.id; toast('Draft saved'); renderDraftsList(); }
+    else toast('Could not save draft', true);
+  } catch (e) { toast('Could not save draft — check your connection', true); }
+}
+
+async function renderDraftsList() {
+  const sec = $('draftsSection');
+  const list = $('draftsList');
+  if (!backendConfigured()) { sec.style.display = 'none'; return; }
+  try {
+    const r = await apiGet('getDrafts');
+    draftsCache = r.status === 'ok' ? r.drafts : [];
+  } catch (e) { return; }
+  if (!draftsCache.length) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  list.innerHTML = draftsCache.map(d => {
+    const total = (d.data.items || []).reduce((s, it) => s + (it.total || 0), 0);
+    const legacy = d.docType === 'PR' || d.docType === 'PO';
+    const avatarLabel = legacy ? d.docType : 'PR·PO';
+    return `<div class="sup-card">
+      <div class="sup-avatar" style="${legacy?'':'font-size:9px'}">${esc(avatarLabel)}</div>
+      <div class="sup-info">
+        <div class="sup-name">${esc(d.data.supName || 'No vendor yet')} — RM ${total.toFixed(2)}</div>
+        <div class="sup-meta">${esc(d.owner || 'Unknown')} · updated ${fmtDate(d.updatedAt)}</div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline btn-sm" onclick="resumeDraftById('${d.id}')">Resume</button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteDraftUI('${d.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function resumeDraftById(id) {
+  const draft = draftsCache.find(d => d.id === id);
+  if (draft) resumeDraft(draft);
+}
+
+function resumeDraft(draft) {
+  // Legacy single-type drafts open on their original section.
+  const legacyType = (draft.docType === 'PR' || draft.docType === 'PO') ? draft.docType : null;
+  openDoc({ _draftId: draft.id, _section: legacyType || 'PR' });
+  currentDraftId = draft.id;
+  applyDraftData(draft.data, legacyType);
+}
+
+// legacyType: migrating an old single-type draft (one docNo + optional prRef); the missing side stays blank.
+function applyDraftData(data, legacyType = null) {
+  const prNo = data.prNo ?? (legacyType === 'PR' ? data.docNo : (data.prRef || ''));
+  const poNo = data.poNo ?? (legacyType === 'PO' ? data.docNo : '');
+  $('fNoPR').value = prNo || '';
+  $('fNoPO').value = poNo || '';
+  $('fNoPR').placeholder = 'PR No. (enter manually)';
+  $('fNoPO').placeholder = 'PO No. (enter manually)';
+  updatePrRefDisplay();
+
+  $('fDelivDate').value = data.delivDate || '';
+  $('fDept').value = data.dept || '';
+  $('fInvRef').value = data.invRef || '';
+  $('fJustify').value = data.justify || '';
+  $('fRemarks').value = data.remarks || '';
+  $('fPayTerms').value = data.payTerms || '';
+
+  const sup = getSuppliers().find(s => s.name === data.supName);
+  $('fSup').value = sup ? sup.id : '';
+  $('fSupSearch').value = data.supName || '';
+  $('fSupContact').value = data.supContact || '';
+  $('fSupAddr').value = data.supAddr || '';
+  $('fSupPhone').value = data.supPhone || '';
+  $('fSupEmail').value = data.supEmail || '';
+
+  ['fShipOutlet','fShipAddr','fShipAttn','fShipPhone','fShipEmail'].forEach(id => {
+    const el = $(id);
+    const key = 'ship' + id.slice(5);
+    if (el) el.value = data[key] || '';
+  });
+
+  const prepStaff = getStaff().find(s => s.name === data.prepName);
+  $('fPrepBy').value = prepStaff ? prepStaff.id : '';
+  $('fPrepPos').value = data.prepPos || '';
+  const authStaff = getStaff().find(s => s.name === data.authName);
+  $('fAuthBy').value = authStaff ? authStaff.id : '';
+  $('fAuthPos').value = data.authPos || '';
+
+  $('itemsBody').innerHTML = '';
+  (data.items && data.items.length ? data.items : [{}]).forEach(it => addRow({
+    description: it.desc, qty: it.qty, unit: it.unit, unitPrice: it.unitPrice,
+  }));
+  $('taxSel').value = data.taxPct || 0;
+
+  recalc();
+  updateFootRef();
+}
+
+async function deleteDraftUI(id) {
+  if (!confirm('Delete this draft?')) return;
+  try { await apiPost('deleteDraft', { id }); } catch (e) {}
+  renderDraftsList();
+}
+
+// ── VENDOR CONFIG ──
+let editSupId=null;
+
+function renderSupList(){
+  const q=($('supSearch')?.value||'').toLowerCase();
+  const all=getSuppliers().slice().sort(byName);
+  const sups=q?all.filter(s=>s.name.toLowerCase().includes(q)||s.contact?.toLowerCase().includes(q)||(s.email||'').toLowerCase().includes(q)):all;
+  $('supCount').textContent=`${sups.length} of ${all.length} vendors`;
+  const el=$('supList');
+  if(!all.length){
+    el.innerHTML=`<div class="empty"><svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100 8 4 4 0 000-8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><p>No vendors yet.</p><button class="btn btn-primary" onclick="openSupModal()">+ Add vendor</button></div>`;
+    return;
+  }
+  if(!sups.length){el.innerHTML=`<div class="empty"><p>No vendors match "${esc(q)}".</p></div>`;return;}
+  el.innerHTML=`<div class="sup-list">${sups.map(s=>`
+    <div class="sup-card">
+      <div class="sup-avatar">${s.name[0].toUpperCase()}</div>
+      <div class="sup-info">
+        <div class="sup-name">${esc(s.name)}</div>
+        <div class="sup-meta">${[s.contact,s.phone,s.email].filter(x=>x&&x!=='-').join(' · ')||'—'}</div>
+        <div class="sup-meta">${[s.payTerms&&esc(s.payTerms),s.ssm&&'SSM: '+esc(s.ssm)].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline btn-sm" onclick="openSupModal('${s.id}')">Edit</button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteSup('${s.id}')">✕</button>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function openSupModal(id=null){
+  editSupId=id;
+  $('supModalTitle').textContent=id?'Edit Vendor':'Add Vendor';
+  ['sName','sContact','sPhone','sEmail','sAddr','sSsm','sPayTerms','sBank','sNotes'].forEach(f=>$(f).value='');
+  if(id){
+    const s=getSuppliers().find(s=>s.id===id);
+    if(s){
+      $('sName').value=s.name||'';
+      $('sContact').value=s.contact||'';
+      $('sPhone').value=s.phone||'';
+      $('sEmail').value=s.email||'';
+      $('sAddr').value=s.address||'';
+      $('sSsm').value=s.ssm||'';
+      $('sPayTerms').value=s.payTerms||'';
+      $('sBank').value=s.bank||'';
+      $('sNotes').value=s.notes||'';
+    }
+  }
+  $('supOverlay').classList.add('open');
+  setTimeout(()=>$('sName').focus(),50);
+}
+
+function closeSupModal(){$('supOverlay').classList.remove('open');editSupId=null;}
+
+function saveSup(){
+  const name=$('sName').value.trim();
+  if(!name){$('sName').focus();return;}
+  const sups=getSuppliers();
+  const data={
+    id:editSupId||'sup_'+Date.now(), name,
+    contact:$('sContact').value.trim(),
+    phone:$('sPhone').value.trim(),
+    email:$('sEmail').value.trim(),
+    address:$('sAddr').value.trim(),
+    ssm:$('sSsm').value.trim(),
+    payTerms:$('sPayTerms').value.trim(),
+    bank:$('sBank').value.trim(),
+    notes:$('sNotes').value.trim(),
+  };
+  setSuppliers(upsert(sups, data)); closeSupModal(); renderSupList(); refreshSupDropdown();
+}
+
+function deleteSup(id){
+  if(!confirm('Delete this vendor?')) return;
+  setSuppliers(getSuppliers().filter(s=>s.id!==id));
+  renderSupList(); refreshSupDropdown();
+}
+
+
+function fillSelect(id, items, placeholder, getVal = x => x, getText = x => x) {
+  const sel = $(id);
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${placeholder}</option>`;
+  items.forEach(x => sel.add(new Option(getText(x), getVal(x))));
+  if (cur) sel.value = cur;
+}
+
+function refreshDeptDropdown() {
+  fillSelect('fDept', getDepts().slice().sort(byName), 'Select...');
+}
+
+function refreshStaffDropdowns() {
+  const staff = getStaff().slice().sort(byName);
+  ['fPrepBy','fAuthBy','amStaff'].forEach(id =>
+    fillSelect(id, staff, id === 'amStaff' ? 'None / unassigned' : 'Select staff...', s => s.id, s => s.name));
+}
+
+function onStaffSelect(role) {
+  const selId  = role === 'prep' ? 'fPrepBy' : 'fAuthBy';
+  const posId  = role === 'prep' ? 'fPrepPos' : 'fAuthPos';
+  const staffId = $(selId).value;
+  const s = getStaff().find(s => s.id === staffId);
+  $(posId).value = s ? s.position : '';
+}
+
+function refreshOutletDropdowns() {
+  fillSelect('fShipOutlet', getOutlets().slice().sort(byName), 'Select outlet...', o => o.name, o => o.name);
+}
+
+
+function onShipOutletChange() {
+  const outlet = $('fShipOutlet').value;
+  const o = getOutlets().find(o => o.name === outlet);
+  $('fShipAddr').value = o ? o.addr : '';
+}
+
+// ── CFG TAB SWITCHER ──
+function cfgTab(tab) {
+  ['company','vendors','outlets','depts','staff'].forEach(t => {
+    $('ctab-'+t).classList.toggle('active', t===tab);
+    $('cpanel-'+t).style.display = t===tab ? '' : 'none';
+  });
+  if (tab==='company') renderCompanyForm();
+  if (tab==='outlets') renderOutlets();
+  if (tab==='depts')   renderDepts();
+  if (tab==='staff')   { renderStaff(); renderAuthMatrixConfig(); }
+}
+
+// ── COMPANY DETAILS CONFIG ──
+function applyCompanyOverrides() {
+  Object.keys(CO_MAP).forEach(key => {
+    const o = getCompanies()[key];
+    if (o) Object.assign(CO_MAP[key], o);
+  });
+}
+
+function renderCoCards() {
+  Object.keys(CO_MAP).forEach(key => {
+    const co = CO_MAP[key];
+    const nameEl = $('coCardName-'+key);
+    const subEl = $('coCardSub-'+key);
+    if (nameEl) nameEl.textContent = co.short;
+    if (subEl) subEl.textContent = co.sub;
+  });
+}
+
+// Working copy of the logo being edited (a file input can't hold a value programmatically).
+let companyFormLogo = null;
+
+function renderCompanyForm() {
+  const key = $('companyEditSel').value;
+  const co = CO_MAP[key];
+  $('coFName').value  = co.name;
+  $('coFShort').value = co.short;
+  $('coFSub').value   = co.sub;
+  $('coFNo').value    = co.coNo;
+  $('coFAddr1').value = co.addr1;
+  $('coFAddr2').value = co.addr2;
+  $('coFEmail').value = co.email;
+  $('coFWeb').value   = co.web;
+  companyFormLogo = co.logo || null;
+  $('coLogoFile').value = '';
+  renderCompanyLogoPreview();
+}
+
+function renderCompanyLogoPreview() {
+  const wrap = $('coLogoPreviewWrap');
+  const img  = $('coLogoPreview');
+  const removeBtn = $('coLogoRemoveBtn');
+  if (companyFormLogo) {
+    img.src = companyFormLogo;
+    wrap.style.display = 'flex';
+    removeBtn.style.display = '';
+  } else {
+    img.removeAttribute('src');
+    wrap.style.display = 'none';
+    removeBtn.style.display = 'none';
+  }
+}
+
+// Logos are resized + flattened to JPEG before touching CFG: the whole shared config
+// round-trips through ONE Google Sheets cell (hard 50,000-char limit). PNG logos came
+// out 20-28K chars each; JPEG-on-white is ~6-9K and headers print on white anyway.
+const LOGO_MAX_DIM = 160;
+const LOGO_JPEG_QUALITY = 0.85;
+const LOGO_MAX_CHARS = 15000; // safety net after resizing — normal output is well under this
+
+function onLogoFileChange(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Please choose an image file', true); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > LOGO_MAX_DIM || h > LOGO_MAX_DIM) {
+        const scale = LOGO_MAX_DIM / Math.max(w, h);
+        w = Math.max(1, Math.round(w * scale));
+        h = Math.max(1, Math.round(h * scale));
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; // flatten any transparency onto white before JPEG-encoding
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', LOGO_JPEG_QUALITY);
+      if (dataUrl.length > LOGO_MAX_CHARS) {
+        toast('That logo is still too large after resizing — try a simpler image.', true);
+        return;
+      }
+      companyFormLogo = dataUrl;
+      renderCompanyLogoPreview();
+    };
+    img.onerror = () => toast('Could not read that image file', true);
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeCompanyLogo() {
+  companyFormLogo = null;
+  $('coLogoFile').value = '';
+  renderCompanyLogoPreview();
+}
+
+function saveCompanyDetails() {
+  const key = $('companyEditSel').value;
+  const name  = $('coFName').value.trim();
+  const short = $('coFShort').value.trim();
+  if (!name || !short) { toast('Legal Name and Short Label are required', true); return; }
+
+  const details = {
+    name, short,
+    sub:   $('coFSub').value.trim(),
+    coNo:  $('coFNo').value.trim(),
+    addr1: $('coFAddr1').value.trim(),
+    addr2: $('coFAddr2').value.trim(),
+    email: $('coFEmail').value.trim(),
+    web:   $('coFWeb').value.trim(),
+    logo:  companyFormLogo || '',
+  };
+  setCompanies({ ...getCompanies(), [key]: details });
+  applyCompanyOverrides();
+  renderCoCards();
+  if (CO.key === key) selectCompany(key); // re-applies CO and refreshes the paper header, incl. the logo
+  toast('Company details saved');
+}
+
+// ── OUTLETS CONFIG ──
+let editOutletId = null;
+
+function renderOutlets() {
+  const all = getOutlets().slice().sort(byName);
+  $('outletCount').textContent = `${all.length} outlets`;
+  $('outletList').innerHTML = all.length
+    ? `<div class="sup-list">${all.map(o=>`
+        <div class="sup-card">
+          <div class="sup-avatar">${o.name[0].toUpperCase()}</div>
+          <div class="sup-info">
+            <div class="sup-name">${esc(o.name)}</div>
+            <div class="sup-meta">${esc(o.addr)||'—'}</div>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-outline btn-sm" onclick="openOutletModal('${o.id}')">Edit</button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteOutlet('${o.id}')">✕</button>
+          </div>
+        </div>`).join('')}</div>`
+    : `<div class="empty"><p>No outlets yet.</p><button class="btn btn-primary" onclick="openOutletModal()">+ Add Outlet</button></div>`;
+}
+
+function openOutletModal(id=null) {
+  editOutletId = id;
+  $('outletModalTitle').textContent = id ? 'Edit Outlet' : 'Add Outlet';
+  const o = id ? getOutlets().find(o=>o.id===id) : null;
+  $('oName').value = o?.name||'';
+  $('oAddr').value = o?.addr||'';
+  $('outletOverlay').classList.add('open');
+  setTimeout(()=>$('oName').focus(),50);
+}
+
+function closeOutletModal() {
+  $('outletOverlay').classList.remove('open');
+  editOutletId = null;
+}
+
+function saveOutlet() {
+  const name = $('oName').value.trim();
+  if (!name) { $('oName').focus(); return; }
+  const outlets = getOutlets();
+  const data = { id: editOutletId||'o_'+Date.now(), name, addr: $('oAddr').value.trim() };
+  setOutlets(upsert(outlets, data));
+  closeOutletModal(); renderOutlets(); refreshOutletDropdowns();
+}
+
+function deleteOutlet(id) {
+  if (!confirm('Delete this outlet?')) return;
+  setOutlets(getOutlets().filter(o=>o.id!==id));
+  renderOutlets(); refreshOutletDropdowns();
+}
+
+
+// ── DEPARTMENTS CONFIG ──
+function renderDepts() {
+  const depts = getDepts().slice().sort(byName);
+  $('deptChips').innerHTML = depts.length
+    ? `<div class="dept-chips">${depts.map(d=>`
+        <span class="dept-chip">${esc(d)}<button onclick="deleteDept('${esc(d)}')" title="Remove">✕</button></span>`).join('')}</div>`
+    : `<p style="color:var(--muted);font-size:13px">No departments yet. Add one above.</p>`;
+}
+
+function addDept() {
+  const inp = $('deptInput');
+  const val = inp.value.trim();
+  if (!val) return;
+  const depts = getDepts();
+  if (!depts.includes(val)) { depts.push(val); setDepts(depts); }
+  inp.value = ''; renderDepts();
+}
+
+function deleteDept(name) {
+  setDepts(getDepts().filter(d=>d!==name)); renderDepts();
+}
+
+function resetDepts() {
+  if (!confirm('Reset to default departments?')) return;
+  setDepts(DEFAULT_DEPTS); renderDepts();
+}
+
+// ── STAFF CONFIG ──
+let editStaffId = null;
+
+function renderStaff() {
+  const all = getStaff().slice().sort(byName);
+  $('staffCount').textContent = `${all.length} staff`;
+  $('staffList').innerHTML = all.length
+    ? `<div class="sup-list">${all.map(s=>`
+        <div class="sup-card">
+          <div class="sup-avatar">${s.name[0].toUpperCase()}</div>
+          <div class="sup-info">
+            <div class="sup-name">${esc(s.name)}</div>
+            <div class="sup-meta">${esc(s.position)||'—'}</div>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-outline btn-sm" onclick="openStaffModal('${s.id}')">Edit</button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteStaff('${s.id}')">✕</button>
+          </div>
+        </div>`).join('')}</div>`
+    : `<div class="empty"><p>No staff added yet.</p><button class="btn btn-primary" onclick="openStaffModal()">+ Add Staff</button></div>`;
+}
+
+function openStaffModal(id=null) {
+  editStaffId = id;
+  $('staffModalTitle').textContent = id ? 'Edit Staff' : 'Add Staff';
+  const s = id ? getStaff().find(s=>s.id===id) : null;
+  $('stName').value = s?.name||'';
+  $('stPos').value  = s?.position||'';
+  $('staffOverlay').classList.add('open');
+  setTimeout(()=>$('stName').focus(),50);
+}
+
+function closeStaffModal() {
+  $('staffOverlay').classList.remove('open');
+  editStaffId = null;
+}
+
+function saveStaff() {
+  const name = $('stName').value.trim();
+  const position = $('stPos').value.trim();
+  if (!name) { $('stName').focus(); return; }
+  const all = getStaff();
+  const data = { id: editStaffId||'st_'+Date.now(), name, position };
+  setStaff(upsert(all, data));
+  closeStaffModal(); renderStaff(); refreshStaffDropdowns();
+}
+
+function deleteStaff(id) {
+  if (!confirm('Remove this staff member?')) return;
+  setStaff(getStaff().filter(s=>s.id!==id));
+  renderStaff(); refreshStaffDropdowns();
+}
+
+
+// ── AUTHORITY MATRIX CONFIG ──
+let editAmId = null;
+
+function renderAuthMatrixConfig() {
+  const matrix = getAuthMatrix().slice().sort((a,b) => (a.maxAmount??Infinity) - (b.maxAmount??Infinity));
+  const staff  = getStaff();
+  const el = $('amList');
+  if (!matrix.length) {
+    el.innerHTML = `<p style="color:var(--muted);font-size:13px">No levels defined. Add one above.</p>`;
+    return;
+  }
+  el.innerHTML = `<table class="am-cfg-table">
+    <thead><tr><th>Role</th><th>Up to (RM)</th><th>Assigned Approver</th><th></th></tr></thead>
+    <tbody>${matrix.map(m => {
+      const person = staff.find(s => s.id === m.staffId);
+      return `<tr>
+        <td style="font-weight:600">${esc(m.role)}</td>
+        <td>${m.maxAmount ? 'RM '+m.maxAmount.toLocaleString() : '<span style="color:var(--muted)">Unlimited</span>'}</td>
+        <td>${person ? esc(person.name)+' <span style="color:var(--muted);font-size:11px">'+esc(person.position)+'</span>' : '<span style="color:var(--muted)">—</span>'}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn btn-outline btn-sm" onclick="openAmModal('${m.id}')">Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteAmEntry('${m.id}')">✕</button>
+        </td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function openAmModal(id = null) {
+  editAmId = id;
+  refreshStaffDropdowns();
+  $('amModalTitle').textContent = id ? 'Edit Authority Level' : 'Add Authority Level';
+  const m = id ? getAuthMatrix().find(m => m.id === id) : null;
+  $('amRole').value  = m?.role || '';
+  $('amMax').value   = m?.maxAmount ?? '';
+  $('amStaff').value = m?.staffId || '';
+  $('amOverlay').classList.add('open');
+  setTimeout(() => $('amRole').focus(), 50);
+}
+
+function closeAmModal() {
+  $('amOverlay').classList.remove('open');
+  editAmId = null;
+}
+
+function saveAmEntry() {
+  const role = $('amRole').value.trim();
+  if (!role) { $('amRole').focus(); return; }
+  const maxRaw = $('amMax').value.trim();
+  const data = {
+    id:        editAmId || 'am_'+Date.now(),
+    role,
+    maxAmount: maxRaw === '' ? null : parseFloat(maxRaw),
+    staffId:   $('amStaff').value,
+  };
+  setAuthMatrix(upsert(getAuthMatrix(), data));
+  closeAmModal();
+  renderAuthMatrixConfig();
+  renderAmRefTable();
+}
+
+function deleteAmEntry(id) {
+  if (!confirm('Remove this authority level?')) return;
+  setAuthMatrix(getAuthMatrix().filter(m => m.id !== id));
+  renderAuthMatrixConfig();
+  renderAmRefTable();
+}
+
+function resetAuthMatrix() {
+  if (!confirm('Reset to default authority matrix?')) return;
+  setAuthMatrix(DEFAULT_AUTH_MATRIX);
+  renderAuthMatrixConfig();
+  renderAmRefTable();
+}
+
+
+// ── PAPER HEADER UPDATE ──
+function updatePaperHeader() {
+  $('dpCoName').textContent = CO.name;
+  $('dpCoMeta').innerHTML =
+    `${CO.coNo}  ·  ${CO.addr1} ${CO.addr2}<br>${CO.email}  ·  ${CO.web}`;
+  const logoEl = $('dpCoLogo');
+  if (CO.logo) { logoEl.src = CO.logo; logoEl.style.display = ''; }
+  else { logoEl.removeAttribute('src'); logoEl.style.display = 'none'; }
+  updateFootRef();
+}
+
+// Live preview of the printed PDF footer line.
+function updateFootRef() {
+  const el = $('dpFootRef');
+  if (!el) return;
+  const activeField = activeSection === 'PR' ? 'fNoPR' : 'fNoPO';
+  const no = $(activeField)?.value.trim() || 'Doc No. pending';
+  el.textContent = `${no}  ·  ${CO.name}  ·  Page 1 of 1`;
+}
+
+// ── SEED / DEFAULT DATA ── starting values for a brand-new/reset shared config; all editable in Configuration
+
+const OUTLET_ADDR = {
+  'Mid Valley (MV)':                      'A-10-3, Northpoint, Mid Valley City, Medan Syed Putra Utara, 59200 Kuala Lumpur',
+  'KLCC':                                  'Suria KLCC, Kuala Lumpur City Centre, 50088 Kuala Lumpur',
+  'Bangsar Village 2 (BV)':               'Bangsar Village II, 2 Jalan Telawi 1, Bangsar Baru, 59100 Kuala Lumpur',
+  'Plaza Arkadia (AK)':                   'Plaza Arkadia, No. 3 Jalan Desa ParkCity, Desa ParkCity, 52200 Kuala Lumpur',
+  'Leisure Mall (LM)':                    'Leisure Mall, Jalan Manis 6, Taman Segar, 56100 Kuala Lumpur',
+  'Sogo KL (SG)':                         'Sogo KL, 190 Jalan Tuanku Abdul Halim, 50350 Kuala Lumpur',
+  'One Utama (OU)':                       '1 Utama Shopping Centre, Lebuh Bandar Utama, 47800 Petaling Jaya, Selangor',
+  'Sunway Pyramid (SP)':                  'Sunway Pyramid, 3 Jalan PJS 11/15, Bandar Sunway, 47500 Subang Jaya, Selangor',
+  'The Glo Clinic Bangsar Village (GC)':  'Bangsar Village II, 2 Jalan Telawi 1, Bangsar Baru, 59100 Kuala Lumpur',
+  'The Glo Clinic Avenue K (AVK)':        'Avenue K, 156 Jalan Ampang, 50450 Kuala Lumpur',
+};
+
+const DEFAULT_AUTH_MATRIX = [
+  { id: 'am1', role: 'Manager', maxAmount: 3000,  staffId: '' },
+  { id: 'am2', role: 'HOD',     maxAmount: 5000,  staffId: '' },
+  { id: 'am3', role: 'COO',     maxAmount: 30000, staffId: '' },
+  { id: 'am4', role: 'CEO',     maxAmount: null,  staffId: '' },
+];
+
+const DEFAULT_OUTLETS = Object.entries(OUTLET_ADDR).map(([name,addr],i)=>({id:'o'+i,name,addr}));
+const DEFAULT_DEPTS = ['Operations','Finance','HR','IT','Marketing','Sales','Medical','Procurement','Admin','Management'];
+
+// ── INIT ──
+function seedLocalDefaults() {
+  if (!CFG.outlets.length)    CFG.outlets = DEFAULT_OUTLETS;
+  if (!CFG.depts.length)      CFG.depts   = DEFAULT_DEPTS;
+  if (!CFG.authMatrix.length) CFG.authMatrix = DEFAULT_AUTH_MATRIX;
+  // glo staff starts empty — each team adds its own people
+}
+
+async function initApp() {
+  const cached = db.get('glo_config_cache', null);
+  if (cached) CFG = Object.assign(CFG, cached);
+
+  if (backendConfigured()) {
+    try {
+      const r = await apiGet('getConfig');
+      if (r.status === 'ok' && r.config) {
+        CFG = Object.assign({ vendors:[], outlets:[], depts:[], staff:[], authMatrix:[], companies:{} }, r.config);
+        backendReady = true;
+      } else {
+        seedLocalDefaults();
+        backendReady = true;
+        persistConfig(); // push this app's defaults so every teammate starts from the same set
+      }
+      renderDraftsList();
+    } catch (e) {
+      toast('Could not reach the shared backend — showing your last saved copy.', true);
+      seedLocalDefaults();
+    }
+  } else {
+    toast('Backend not connected yet — running in local-only mode. See SETUP_INSTRUCTIONS.md.', true);
+    seedLocalDefaults();
+  }
+
+  applyCompanyOverrides();
+  renderCoCards();
+
+  const myName = db.get('glo_myname', '');
+  if (myName) $('navMyName').textContent = myName;
+
+  $('coLogoSub').textContent = 'Select your company to continue';
+  const cards = $('coCards');
+  cards.style.opacity = '1';
+  cards.style.pointerEvents = 'auto';
+}
+
+// Clicking a modal backdrop closes that modal.
+[['supOverlay', closeSupModal], ['outletOverlay', closeOutletModal], ['staffOverlay', closeStaffModal], ['amOverlay', closeAmModal]]
+  .forEach(([id, close]) => $(id).addEventListener('click', function(e){ if (e.target === this) close(); }));
+
+initApp();
+</script>
+</body>
+</html>
